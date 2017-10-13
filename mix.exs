@@ -36,6 +36,9 @@ defmodule Expected.Mixfile do
       {:excoveralls, ">= 0.0.0", only: :test, runtime: false},
       {:mix_test_watch, ">= 0.0.0", only: :dev, runtime: false},
       {:ex_unit_notifier, ">= 0.0.0", only: :test, runtime: false},
+
+      # Documentation dependencies
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
     ]
   end
 end

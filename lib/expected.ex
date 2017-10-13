@@ -1,18 +1,5 @@
 defmodule Expected do
   @moduledoc """
-  Documentation for Expected.
+  A module for login and session management.
   """
-
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> Expected.hello
-      :world
-
-  """
-  def hello do
-    :world
-  end
 end
