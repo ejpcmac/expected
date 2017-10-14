@@ -11,7 +11,7 @@ defmodule Expected.Store do
   The value returned from this callback is passed as the last argument to
   `list_user_logins/2`, `get/3`, `put/2` and `delete/3`.
   """
-  @callback init(opts :: term) :: term
+  @callback init(opts :: keyword) :: term
 
   @doc """
   Lists the logins present in the store for the given `username`.
