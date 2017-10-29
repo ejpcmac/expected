@@ -30,13 +30,21 @@ defmodule Expected.MemoryStore do
   @spec start_link() :: GenServer.on_start
   @spec start_link(term) :: GenServer.on_start
   def start_link(default \\ %{}) do
-    name = Application.fetch_env!(:expected, :process_name)
-    GenServer.start_link(__MODULE__.Server, default, name: name)
+    case Application.fetch_env(:expected, :process_name) do
+      {:ok, name} ->
+        GenServer.start_link(__MODULE__.Server, default, name: name)
+
+      :error ->
+        raise Expected.ConfigurationError, reason: :no_process_name
+    end
   end
 
   @impl true
   def init(opts) do
-    Keyword.fetch!(opts, :process_name)
+    case Keyword.fetch(opts, :process_name) do
+      {:ok, server} -> server
+      :error -> raise Expected.ConfigurationError, reason: :no_process_name
+    end
   end
 
   @impl true
