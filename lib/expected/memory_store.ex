@@ -5,18 +5,38 @@ defmodule Expected.MemoryStore do
   This store is mainly written for test purposes. It does not persist data on
   disk nor share it between nodes.
 
+  To use this store, you must precise the process name in the application
+  configuration:
+
+      config :expected,
+        store: :memory,
+        process_name: :test_store,
+        session_key: "_test_key"
+
+  You also must start the server:
+
+      Expected.MemoryStore.start_link()
+
   It is possible to initialise it with a defined state to help testing:
 
-      Expected.MemoryStore.init(default: %{})
+      Expected.MemoryStore.start_link(%{})
   """
 
   @behaviour Expected.Store
 
+  @doc """
+  Starts the store server.
+  """
+  @spec start_link() :: GenServer.on_start
+  @spec start_link(term) :: GenServer.on_start
+  def start_link(default \\ %{}) do
+    name = Application.fetch_env!(:expected, :process_name)
+    GenServer.start_link(__MODULE__.Server, default, name: name)
+  end
+
   @impl true
   def init(opts) do
-    default = Keyword.get(opts, :default, %{})
-    {:ok, pid} = GenServer.start_link(__MODULE__.Server, default)
-    pid
+    Keyword.fetch!(opts, :process_name)
   end
 
   @impl true

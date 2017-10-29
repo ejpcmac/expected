@@ -21,7 +21,7 @@ defmodule Expected.Store.Test do
         # Test your init function
         describe "init/1" do
           test "returns the table name" do
-            assert init(talbe: :expected) == :expected
+            assert init(table: :expected) == :expected
           end
         end
       end
