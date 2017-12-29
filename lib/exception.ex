@@ -15,7 +15,8 @@ defmodule Expected.ConfigurationError do
 
         config :expected,
           store: :mnesia,
-          table: :expected
+          table: :expected,
+          ...
     """
   end
 
@@ -27,7 +28,8 @@ defmodule Expected.ConfigurationError do
 
         config :expected,
           store: :memory,
-          process_name: :test_store
+          process_name: :test_store,
+          ...
     """
   end
 
@@ -40,7 +42,24 @@ defmodule Expected.ConfigurationError do
         config :expected,
           store: :mnesia,
           table: :expected,
-          session_cookie: "_my_app_key"
+          session_store: PlugSessionMnesia.Store,
+          session_cookie: "_my_app_key",
+          session_opts: [table: :session]
+    """
+  end
+
+  def message(%{reason: :no_session_store}) do
+    """
+    Session store not set.
+
+    It can be set in the configuration:
+
+        config :expected,
+          store: :mnesia,
+          table: :expected,
+          session_store: PlugSessionMnesia.Store,
+          session_cookie: "_my_app_key",
+          session_opts: [table: :session]
 
     Alternatively, it cas be passed locally to the plugs as an option:
 

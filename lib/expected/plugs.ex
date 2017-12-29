@@ -5,15 +5,18 @@ defmodule Expected.Plugs do
   ## Requirements
 
   For the plugs in this module to work, you must plug `Expected.Config` in your
-  endpoint, **before** `Plug.Session`:
+  endpoint:
 
       plug Expected.Config
-      plug Plug.Session,
-        key: "_my_app_key",
-        store: PlugSessionMnesia.Store  # For instance, could be another one
+
+  As `Expected.Config` calls `Plug.Session`, you must not plug it in your
+  endpoint.
   """
 
   import Plug.Conn, only: [get_session: 2, put_private: 3]
+
+  @auth_cookie "expected"
+  @cookie_max_age 7_776_000  # 3 months.
 
   @doc """
   Registers a login.
@@ -24,17 +27,12 @@ defmodule Expected.Plugs do
   the session cookie. **You must use a session store that stores the session
   server-side and uses the cookie to store the session ID:**
 
-      plug Plug.Session,
-        key: "_my_app_key",
-        store: PlugSessionMnesia.Store  # For instance, could be another one.
-
-  You must also precise the session cookie key in the configuration, matching
-  with the one set in `Plug.Session`:
-
       config :expected,
         store: :mnesia,
         table: :expected,
-        session_cookie: "_my_app_key"   # Same value as above.
+        session_store: PlugSessionMnesia.Store,  # For instance.
+        session_cookie: "_my_app_key",
+        session_opts: [table: :session]
 
   ## Session requirements
 
@@ -54,9 +52,7 @@ defmodule Expected.Plugs do
   They can also be set application-wide in the configuration:
 
       config :expected,
-        store: :mnesia,
-        table: :expected,
-        session_cookie: "_my_app_key",
+        ...
         plug_config: [current_user: :logged_in_user, username: :user_id]
 
   ## Persistent logins
@@ -77,9 +73,7 @@ defmodule Expected.Plugs do
   configuration:
 
       config :expected,
-        store: :mnesia,
-        table: :expected,
-        session_cookie: "_my_app_key",
+        ...
         auth_cookie: "_my_app_auth",  # Set the authentication cookie name here.
         cookie_max_age: 86_400        # Set to one day, for example.
 
@@ -93,16 +87,28 @@ defmodule Expected.Plugs do
   @spec register_login(Plug.Conn.t) :: Plug.Conn.t
   @spec register_login(Plug.Conn.t, keyword) :: Plug.Conn.t
   def register_login(conn, opts \\ []) do
-    unless conn.private[:expected] == :initialised, do: raise Expected.PlugError
-
-    expected = %{
-      session_cookie: fetch_session_cookie_name!(opts),
-      auth_cookie: get_option(opts, :auth_cookie, "expected"),
-      cookie_max_age: get_option(opts, :cookie_max_age, 3 * 24 * 3600),
-      username: fetch_username!(conn, opts)
-    }
+    expected =
+      conn
+      |> fetch_expected!()
+      |> put_cookies_opts(opts)
+      |> Map.put(:username, fetch_username!(conn, opts))
+      |> Map.put(:action, :register_login)
 
     put_private(conn, :expected, expected)
+  end
+
+  @spec fetch_expected!(Plug.Conn.t) :: map
+  defp fetch_expected!(%{private: %{expected: expected}}), do: expected
+  defp fetch_expected!(_), do: raise Expected.PlugError
+
+  @spec put_cookies_opts(map, keyword) :: map
+  defp put_cookies_opts(expected, opts) do
+    env = Application.get_all_env(:expected)
+    expected
+    |> Map.put(:session_cookie, fetch_session_cookie_name!(opts))
+    |> Map.put(:auth_cookie, get_option(opts, env, :auth_cookie, @auth_cookie))
+    |> Map.put(:cookie_max_age, get_option(opts, env, :cookie_max_age,
+      @cookie_max_age))
   end
 
   @spec fetch_session_cookie_name!(keyword) :: String.t
@@ -114,22 +120,16 @@ defmodule Expected.Plugs do
     end
   end
 
-  @spec get_option(keyword, atom, term) :: String.t
-  defp get_option(opts, key, default) do
-    opts[key] || Application.get_env(:expected, key, default)
+  @spec get_option(keyword, keyword, atom, term) :: term
+  defp get_option(opts, config, key, default) do
+    opts[key] || config[key] || default
   end
 
   @spec fetch_username!(Plug.Conn.t, keyword) :: String.t
   defp fetch_username!(conn, opts) do
     plug_config = Application.get_env(:expected, :plug_config, [])
-
-    current_user =
-      opts[:current_user] ||
-      Keyword.get(plug_config, :current_user, :current_user)
-
-    username =
-      opts[:username] ||
-      Keyword.get(plug_config, :username, :username)
+    current_user = get_option(opts, plug_config, :current_user, :current_user)
+    username = get_option(opts, plug_config, :username, :username)
 
     case get_session(conn, current_user) do
       %{^username => current_username} -> current_username

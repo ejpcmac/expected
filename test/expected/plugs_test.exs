@@ -20,7 +20,9 @@ defmodule Expected.PlugsTest do
   setup do
     Application.put_env(:expected, :store, :memory)
     Application.put_env(:expected, :process_name, @server)
+    Application.put_env(:expected, :session_store, :ets)
     Application.put_env(:expected, :session_cookie, @session_cookie)
+    Application.put_env(:expected, :session_opts, table: :test_session)
 
     :ets.new(@ets_table, [:named_table, :public])
     MemoryStore.start_link()
@@ -29,7 +31,6 @@ defmodule Expected.PlugsTest do
       :get
       |> conn("/")
       |> Expected.Config.call(Expected.Config.init([]))
-      |> Plug.Session.call(Plug.Session.init(@session_opts))
       |> fetch_session()
 
     on_exit fn ->
@@ -62,6 +63,8 @@ defmodule Expected.PlugsTest do
       assert String.length(login.token) != 0
       assert login.sid == conn.cookies[@session_cookie]
       assert login.persistent? == false
+      assert %DateTime{} = login.created_at
+      assert %DateTime{} = login.last_login
       assert login.last_ip == {127, 0, 0, 1}
       assert login.last_useragent == "ExUnit"
     end
@@ -83,7 +86,7 @@ defmodule Expected.PlugsTest do
 
     ## Configuration
 
-    test "fetches the key from the session cookie set in options" do
+    test "fetches the session key from the session cookie set in options" do
       session_opts = Keyword.replace(@session_opts, :key, "_other_key")
 
       conn =
