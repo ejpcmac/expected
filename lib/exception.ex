@@ -33,11 +33,11 @@ defmodule Expected.ConfigurationError do
     """
   end
 
-  def message(%{reason: :no_session_cookie}) do
+  def message(%{reason: :no_session_store}) do
     """
-    Session cookie key not set.
+    Session store not set.
 
-    You must set a session cookie name in the configuration:
+    You must set a session store in the configuration:
 
         config :expected,
           store: :mnesia,
@@ -48,11 +48,11 @@ defmodule Expected.ConfigurationError do
     """
   end
 
-  def message(%{reason: :no_session_store}) do
+  def message(%{reason: :no_session_cookie}) do
     """
-    Session store not set.
+    Session cookie key not set.
 
-    You must set a session store in the configuration:
+    You must set a session cookie name in the configuration:
 
         config :expected,
           store: :mnesia,
@@ -96,11 +96,7 @@ defmodule Expected.SessionError do
     """
     The connection does not contain a cookie named \"#{session_cookie}\".
 
-    This problem can occur if:
-
-      * the session has not been fetched,
-      * the `session_cookie` value in the configuration does not match the `key`
-        value in the `Plug.Session` configuration. Please ensure they match.
+    This problem can occur if the session has not been fetched.
     """
   end
 end
