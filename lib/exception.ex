@@ -66,19 +66,18 @@ end
 
 defmodule Expected.PlugError do
   @moduledoc """
-  Error raised by `Expected.Plugs` functions if `Expected.Config` has not been
-  plugged.
+  Error raised by `Expected.Plugs` functions if `Expected` has not been plugged.
   """
 
   defexception []
 
   def message(_) do
     """
-    `Expected.Config` has not been plugged.
+    `Expected` has not been plugged.
 
-    Please ensure to plug `Expected.Config` in your endpoint:
+    Please ensure to plug `Expected` in your endpoint:
 
-        plug Expected.Config
+        plug Expected
     """
   end
 end

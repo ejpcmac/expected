@@ -45,7 +45,7 @@ defmodule Expected.PlugsTest do
     conn =
       :get
       |> conn("/")
-      |> Expected.Config.call(Expected.Config.init([]))
+      |> Expected.call(Expected.init([]))
 
     on_exit fn ->
       Application.delete_env(:expected, :auth_cookie)
@@ -116,7 +116,7 @@ defmodule Expected.PlugsTest do
       conn =
         :get
         |> conn("/")
-        |> Expected.Config.call(Expected.Config.init([]))
+        |> Expected.call(Expected.init([]))
         |> Plug.Session.call(Plug.Session.init(session_opts))
         |> fetch_session()
         |> put_session(:current_user, %{username: "user"})
@@ -257,7 +257,7 @@ defmodule Expected.PlugsTest do
 
     ## Problems
 
-    test "raises an exception if `Expected.Config` has not been plugged" do
+    test "raises an exception if `Expected` has not been plugged" do
       assert_raise Expected.PlugError, fn ->
         :get
         |> conn("/")
@@ -662,7 +662,7 @@ defmodule Expected.PlugsTest do
       assert get_session(conn, :current_user) == nil
     end
 
-    test "raises an exception if `Expected.Config` has not been plugged" do
+    test "raises an exception if `Expected` has not been plugged" do
       assert_raise Expected.PlugError, fn ->
         :get
         |> conn("/")

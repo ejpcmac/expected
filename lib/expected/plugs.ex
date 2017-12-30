@@ -4,12 +4,12 @@ defmodule Expected.Plugs do
 
   ## Requirements
 
-  For the plugs in this module to work, you must plug `Expected.Config` in your
+  For the plugs in this module to work, you must plug `Expected` in your
   endpoint:
 
-      plug Expected.Config
+      plug Expected
 
-  As `Expected.Config` calls `Plug.Session` itself, you must not plug it in your
+  As `Expected` calls `Plug.Session` itself, you must not plug it in your
   endpoint. You must however configure the session in the `:expected`
   configuration:
 
