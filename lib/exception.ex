@@ -37,7 +37,7 @@ defmodule Expected.ConfigurationError do
     """
     Session cookie key not set.
 
-    It can be set in the configuration:
+    You must set a session cookie name in the configuration:
 
         config :expected,
           store: :mnesia,
@@ -52,7 +52,7 @@ defmodule Expected.ConfigurationError do
     """
     Session store not set.
 
-    It can be set in the configuration:
+    You must set a session store in the configuration:
 
         config :expected,
           store: :mnesia,
@@ -60,11 +60,6 @@ defmodule Expected.ConfigurationError do
           session_store: PlugSessionMnesia.Store,
           session_cookie: "_my_app_key",
           session_opts: [table: :session]
-
-    Alternatively, it cas be passed locally to the plugs as an option:
-
-        conn
-        |> register_login(session_cookie: "_my_app_key")
     """
   end
 end
@@ -81,13 +76,9 @@ defmodule Expected.PlugError do
     """
     `Expected.Config` has not been plugged.
 
-    Please ensure to plug `Expected.Config` in your endpoint, **before**
-    `Plug.Session`:
+    Please ensure to plug `Expected.Config` in your endpoint:
 
         plug Expected.Config
-        plug Plug.Session,
-          key: "_my_app_key",
-          store: PlugSessionMnesia.Store  # For instance, could be another one.
     """
   end
 end

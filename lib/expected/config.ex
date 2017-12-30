@@ -115,6 +115,27 @@ defmodule Expected.Config do
     put_auth_cookie(conn, login)
   end
 
+  defp do_before_send(conn, %{action: :update_login} = expected) do
+    %{
+      login: login,
+      store: store,
+      store_opts: store_opts,
+      session_cookie: session_cookie
+    } = expected
+
+    login = %{
+      login |
+      token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
+      sid: fetch_sid!(conn, session_cookie),
+      last_login: DateTime.utc_now(),
+      last_ip: conn.remote_ip,
+      last_useragent: get_user_agent(conn)
+    }
+
+    store.put(login, store_opts)
+    put_auth_cookie(conn, login)
+  end
+
   defp do_before_send(conn, _) do
     conn
   end
