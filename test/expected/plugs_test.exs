@@ -25,7 +25,6 @@ defmodule Expected.PlugsTest do
     serial: "serial",
     token: "token",
     sid: "sid",
-    persistent?: true,
     created_at: DateTime.utc_now(),
     last_login: DateTime.utc_now(),
     last_ip: {127, 0, 0, 1},
@@ -86,25 +85,21 @@ defmodule Expected.PlugsTest do
       assert is_binary(login.token)
       assert String.length(login.token) != 0
       assert login.sid == conn.cookies[@session_cookie]
-      assert login.persistent? == false
       assert %DateTime{} = login.created_at
       assert %DateTime{} = login.last_login
       assert login.last_ip == {127, 0, 0, 1}
       assert login.last_useragent == "ExUnit"
     end
 
-    test "creates a persistent login entry if persistent_login is set to true",
-         %{conn: conn} do
+    test "puts an auth_cookie if all is correctly configured", %{conn: conn} do
       conn =
         conn
+        |> put_req_header("user-agent", "ExUnit")
         |> put_session(:current_user, %{username: "user"})
-        |> assign(:persistent_login, true)
         |> register_login()
         |> send_resp(:ok, "")
 
-      assert [%Login{username: "user", persistent?: true} = login] =
-               MemoryStore.list_user_logins("user", @server)
-
+      assert [%Login{} = login] = MemoryStore.list_user_logins("user", @server)
       assert conn.cookies[@auth_cookie] == "user.#{login.serial}.#{login.token}"
     end
 
@@ -198,7 +193,6 @@ defmodule Expected.PlugsTest do
       conn =
         conn
         |> put_session(:current_user, %{username: "user"})
-        |> assign(:persistent_login, true)
         |> register_login()
         |> send_resp(:ok, "")
 
@@ -214,7 +208,6 @@ defmodule Expected.PlugsTest do
       conn =
         conn
         |> put_session(:current_user, %{username: "user"})
-        |> assign(:persistent_login, true)
         |> register_login(auth_cookie: "other_cookie")
         |> send_resp(:ok, "")
 
@@ -232,7 +225,6 @@ defmodule Expected.PlugsTest do
       conn =
         conn
         |> put_session(:current_user, %{username: "user"})
-        |> assign(:persistent_login, true)
         |> register_login()
         |> send_resp(:ok, "")
 
@@ -247,7 +239,6 @@ defmodule Expected.PlugsTest do
       conn =
         conn
         |> put_session(:current_user, %{username: "user"})
-        |> assign(:persistent_login, true)
         |> register_login(cookie_max_age: 9)
         |> send_resp(:ok, "")
 
@@ -544,7 +535,6 @@ defmodule Expected.PlugsTest do
         serial: "serial2",
         token: "token2",
         sid: "sid2",
-        persistent?: true,
         created_at: DateTime.utc_now(),
         last_login: DateTime.utc_now(),
         last_ip: {127, 0, 0, 1},

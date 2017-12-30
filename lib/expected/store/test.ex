@@ -47,7 +47,6 @@ defmodule Expected.Store.Test do
         serial: "1",
         token: "token",
         sid: "sid",
-        persistent?: false,
         created_at: @now,
         last_login: @now,
         last_ip: {127, 0, 0, 1},

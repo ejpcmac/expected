@@ -106,7 +106,6 @@ defmodule Expected do
       serial: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
       token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
       sid: fetch_sid!(conn, session_cookie),
-      persistent?: conn.assigns[:persistent_login] || false,
       created_at: DateTime.utc_now(),
       last_login: DateTime.utc_now(),
       last_ip: conn.remote_ip,
@@ -159,8 +158,6 @@ defmodule Expected do
   end
 
   @spec put_auth_cookie(Plug.Conn.t(), Login.t()) :: Plug.Conn.t()
-  defp put_auth_cookie(conn, %Login{persistent?: false}), do: conn
-
   defp put_auth_cookie(conn, login) do
     auth_cookie_name = conn.private.expected.auth_cookie
     max_age = conn.private.expected.cookie_max_age

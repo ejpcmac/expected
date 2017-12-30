@@ -64,21 +64,11 @@ defmodule Expected.Plugs do
         ...
         plug_config: [current_user: :logged_in_user, username: :user_id]
 
-  ## Persistent logins
+  ## Authentication cookie
 
-  To make the login persistent, `conn.assigns.persistent_login` can be set to
-  `true`:
-
-      conn
-      |> put_session(:current_user, %User{username: "user", name: "A User"})
-      |> assign(:persistent_login, true)
-      |> register_login()
-
-  This field is not mandatory, though.
-
-  Authentication information for persistent logins is stored in a cookie. By
-  default, it is named `"expected"` and is valid for three months after the last
-  successful authentication. You can change these parameters in the application
+  Authentication information is stored in a cookie. By default, it is named
+  `"expected"` and is valid for three months after the last successful
+  authentication. You can change these parameters in the application
   configuration:
 
       config :expected,
