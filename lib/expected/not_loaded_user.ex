@@ -10,5 +10,5 @@ defmodule Expected.NotLoadedUser do
   defstruct [:username]
 
   @typedoc "A not-loaded user"
-  @type t :: %__MODULE__{username: String.t}
+  @type t() :: %__MODULE__{username: String.t()}
 end

@@ -3,12 +3,13 @@ defmodule Expected.Config do
   A plug for configuring `Expected`.
   """
 
-  import Plug.Conn, only: [
-    get_req_header: 2,
-    put_private: 3,
-    put_resp_cookie: 4,
-    register_before_send: 2
-  ]
+  import Plug.Conn,
+    only: [
+      get_req_header: 2,
+      put_private: 3,
+      put_resp_cookie: 4,
+      register_before_send: 2
+    ]
 
   alias Expected.Login
 
@@ -21,9 +22,10 @@ defmodule Expected.Config do
     |> init_session()
   end
 
-  @spec init_store(map) :: map
+  @spec init_store(map()) :: map()
   defp init_store(expected) do
     store = fetch_store!()
+
     store_opts =
       :expected
       |> Application.get_all_env()
@@ -34,7 +36,7 @@ defmodule Expected.Config do
     |> Map.put(:store_opts, store_opts)
   end
 
-  @spec init_session(map) :: map
+  @spec init_session(map()) :: map()
   defp init_session(expected) do
     opts = [
       store: fetch_session_store!(),
@@ -47,7 +49,7 @@ defmodule Expected.Config do
     Map.put(expected, :session_opts, session_opts)
   end
 
-  @spec fetch_store!() :: module
+  @spec fetch_store!() :: module()
   defp fetch_store!() do
     case Application.fetch_env(:expected, :store) do
       {:ok, key} -> get_store(key)
@@ -55,11 +57,11 @@ defmodule Expected.Config do
     end
   end
 
-  @spec get_store(atom) :: module
+  @spec get_store(atom()) :: module()
   defp get_store(:memory), do: Expected.MemoryStore
   defp get_store(store), do: store
 
-  @spec fetch_session_store!() :: atom
+  @spec fetch_session_store!() :: atom()
   defp fetch_session_store!() do
     case Application.fetch_env(:expected, :session_store) do
       {:ok, session_store} -> session_store
@@ -67,7 +69,7 @@ defmodule Expected.Config do
     end
   end
 
-  @spec fetch_session_cookie_name!() :: String.t
+  @spec fetch_session_cookie_name!() :: String.t()
   defp fetch_session_cookie_name!() do
     case Application.fetch_env(:expected, :session_cookie) do
       {:ok, session_cookie} -> session_cookie
@@ -83,13 +85,13 @@ defmodule Expected.Config do
     |> Plug.Session.call(opts.session_opts)
   end
 
-  @spec before_send(Plug.Conn.t, keyword) :: Plug.Conn.t
+  @spec before_send(Plug.Conn.t(), keyword()) :: Plug.Conn.t()
   defp before_send(conn, _opts \\ []) do
     expected = conn.private[:expected]
     do_before_send(conn, expected)
   end
 
-  @spec do_before_send(Plug.Conn.t, term) :: Plug.Conn.t
+  @spec do_before_send(Plug.Conn.t(), term()) :: Plug.Conn.t()
 
   defp do_before_send(conn, %{action: :register_login} = expected) do
     %{
@@ -124,12 +126,12 @@ defmodule Expected.Config do
     } = expected
 
     login = %{
-      login |
-      token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
-      sid: fetch_sid!(conn, session_cookie),
-      last_login: DateTime.utc_now(),
-      last_ip: conn.remote_ip,
-      last_useragent: get_user_agent(conn)
+      login
+      | token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
+        sid: fetch_sid!(conn, session_cookie),
+        last_login: DateTime.utc_now(),
+        last_ip: conn.remote_ip,
+        last_useragent: get_user_agent(conn)
     }
 
     store.put(login, store_opts)
@@ -140,7 +142,7 @@ defmodule Expected.Config do
     conn
   end
 
-  @spec get_user_agent(Plug.Conn.t) :: String.t
+  @spec get_user_agent(Plug.Conn.t()) :: String.t()
   defp get_user_agent(conn) do
     case get_req_header(conn, "user-agent") do
       [user_agent] -> user_agent
@@ -148,7 +150,7 @@ defmodule Expected.Config do
     end
   end
 
-  @spec fetch_sid!(Plug.Conn.t, String.t) :: String.t
+  @spec fetch_sid!(Plug.Conn.t(), String.t()) :: String.t()
   defp fetch_sid!(conn, session_cookie) do
     case conn.cookies[session_cookie] do
       nil -> raise Expected.SessionError
@@ -156,8 +158,9 @@ defmodule Expected.Config do
     end
   end
 
-  @spec put_auth_cookie(Plug.Conn.t, Login.t) :: Plug.Conn.t
+  @spec put_auth_cookie(Plug.Conn.t(), Login.t()) :: Plug.Conn.t()
   defp put_auth_cookie(conn, %Login{persistent?: false}), do: conn
+
   defp put_auth_cookie(conn, login) do
     auth_cookie_name = conn.private.expected.auth_cookie
     max_age = conn.private.expected.cookie_max_age

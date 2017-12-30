@@ -25,19 +25,19 @@ defmodule Expected.Login do
     :created_at,
     :last_login,
     :last_ip,
-    :last_useragent,
+    :last_useragent
   ]
 
   @typedoc "A login"
-  @type t :: %__MODULE__{
-    username: String.t,
-    serial: String.t,
-    token: String.t,
-    sid: String.t | nil,
-    persistent?: boolean,
-    created_at: Calendar.datetime,
-    last_login: Calendar.datetime,
-    last_ip: :inet.ip_address,
-    last_useragent: String.t,
-  }
+  @type t() :: %__MODULE__{
+          username: String.t(),
+          serial: String.t(),
+          token: String.t(),
+          sid: String.t() | nil,
+          persistent?: boolean,
+          created_at: Calendar.datetime(),
+          last_login: Calendar.datetime(),
+          last_ip: :inet.ip_address(),
+          last_useragent: String.t()
+        }
 end

@@ -17,10 +17,10 @@ defmodule Expected.MemoryStoreTest do
       Application.delete_env(:expected, :process_name)
 
       assert_raise Expected.ConfigurationError,
-        Expected.ConfigurationError.message(%{reason: :no_process_name}),
-        fn ->
-          start_link()
-        end
+                   Expected.ConfigurationError.message(%{
+                     reason: :no_process_name
+                   }),
+                   fn -> start_link() end
     end
   end
 
@@ -33,10 +33,10 @@ defmodule Expected.MemoryStoreTest do
       Application.delete_env(:expected, :process_name)
 
       assert_raise Expected.ConfigurationError,
-        Expected.ConfigurationError.message(%{reason: :no_process_name}),
-        fn ->
-          init([])
-        end
+                   Expected.ConfigurationError.message(%{
+                     reason: :no_process_name
+                   }),
+                   fn -> init([]) end
     end
   end
 end

@@ -27,8 +27,8 @@ defmodule Expected.MemoryStore do
   @doc """
   Starts the store server.
   """
-  @spec start_link() :: GenServer.on_start
-  @spec start_link(term) :: GenServer.on_start
+  @spec start_link() :: GenServer.on_start()
+  @spec start_link(term()) :: GenServer.on_start()
   def start_link(default \\ %{}) do
     case Application.fetch_env(:expected, :process_name) do
       {:ok, name} ->

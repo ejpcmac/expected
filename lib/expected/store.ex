@@ -11,19 +11,21 @@ defmodule Expected.Store do
   The value returned from this callback is passed as the last argument to
   `list_user_logins/2`, `get/3`, `put/2` and `delete/3`.
   """
-  @callback init(opts :: keyword) :: term
+  @callback init(opts :: keyword()) :: term()
 
   @doc """
   Lists the logins present in the store for the given `username`.
   """
-  @callback list_user_logins(username :: String.t, opts :: term) :: [Login.t]
+  @callback list_user_logins(username :: String.t(), opts :: term()) :: [
+              Login.t()
+            ]
 
   @doc """
   Gets the login for the given `username` and `serial` from the store.
   """
-  @callback get(username :: String.t, serial :: String.t, opts :: term) ::
-    {:ok, Login.t} |
-    {:error, :no_login}
+  @callback get(username :: String.t(), serial :: String.t(), opts :: term()) ::
+              {:ok, Login.t()}
+              | {:error, :no_login}
 
   @doc """
   Puts a login in the store.
@@ -36,11 +38,14 @@ defmodule Expected.Store do
 
   In other words, the couple `{username, serial}` must be unique.
   """
-  @callback put(login :: Login.t, opts :: term) :: :ok
+  @callback put(login :: Login.t(), opts :: term()) :: :ok
 
   @doc """
   Deletes a login from the store given its `username` and `serial`.
   """
-  @callback delete(username :: String.t, serial :: String.t, opts :: term) ::
-    :ok
+  @callback delete(
+              username :: String.t(),
+              serial :: String.t(),
+              opts :: term()
+            ) :: :ok
 end

@@ -21,7 +21,6 @@ defmodule Expected.ConfigTest do
   end
 
   describe "init/1" do
-
     ## Standard cases
 
     test "gets the store module from the application environment" do
@@ -44,7 +43,7 @@ defmodule Expected.ConfigTest do
 
     test "initialises the session" do
       assert %{session_opts: %{key: "_test_key", store_config: :test_session}} =
-        Config.init([])
+               Config.init([])
     end
 
     ## Problems
@@ -53,20 +52,18 @@ defmodule Expected.ConfigTest do
       Application.delete_env(:expected, :store)
 
       assert_raise Expected.ConfigurationError,
-        Expected.ConfigurationError.message(%{reason: :no_store}),
-        fn ->
-          Config.init([])
-        end
+                   Expected.ConfigurationError.message(%{reason: :no_store}),
+                   fn -> Config.init([]) end
     end
 
     test "raises an exception if the session store is not configured" do
       Application.delete_env(:expected, :session_store)
 
       assert_raise Expected.ConfigurationError,
-        Expected.ConfigurationError.message(%{reason: :no_session_store}),
-        fn ->
-          Config.init([])
-        end
+                   Expected.ConfigurationError.message(%{
+                     reason: :no_session_store
+                   }),
+                   fn -> Config.init([]) end
     end
   end
 end

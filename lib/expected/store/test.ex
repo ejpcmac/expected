@@ -40,7 +40,7 @@ defmodule Expected.Store.Test do
 
       alias Expected.Login
 
-      @now DateTime.utc_now
+      @now DateTime.utc_now()
 
       @login1 %Login{
         username: "user",
@@ -66,13 +66,15 @@ defmodule Expected.Store.Test do
       describe "list_user_logins/2" do
         setup [:init_store]
 
-        test "lists the logins present in the store for a user",
-             %{opts: opts} do
+        test "lists the logins present in the store for a user", %{
+          opts: opts
+        } do
           assert list_user_logins("user", opts) == [@login1]
         end
 
-        test "works as well when the user is not present in the store",
-             %{opts: opts} do
+        test "works as well when the user is not present in the store", %{
+          opts: opts
+        } do
           assert list_user_logins("test", opts) == []
         end
       end
@@ -80,13 +82,15 @@ defmodule Expected.Store.Test do
       describe "get/3" do
         setup [:init_store]
 
-        test "gets the login for the given username and serial",
-             %{opts: opts} do
+        test "gets the login for the given username and serial", %{
+          opts: opts
+        } do
           assert {:ok, @login1} = get("user", "1", opts)
         end
 
-        test "returns an error if there is no correspondant login",
-             %{opts: opts} do
+        test "returns an error if there is no correspondant login", %{
+          opts: opts
+        } do
           assert {:error, :no_login} = get("user", "9", opts)
           assert {:error, :no_login} = get("test", "1", opts)
         end
@@ -95,20 +99,23 @@ defmodule Expected.Store.Test do
       describe "put/2" do
         setup [:init_store]
 
-        test "creates a new entry if there is none for the given serial",
-             %{opts: opts} do
+        test "creates a new entry if there is none for the given serial", %{
+          opts: opts
+        } do
           assert :ok = put(@login2, opts)
           assert list_user_logins("user", opts) == [@login1, @login2]
         end
 
-        test "creates a new entry if there is none for the given username",
-             %{opts: opts} do
+        test "creates a new entry if there is none for the given username", %{
+          opts: opts
+        } do
           assert :ok = put(@login3, opts)
           assert list_user_logins("user2", opts) == [@login3]
         end
 
-        test "replaces an existing entry if there is one already",
-             %{opts: opts} do
+        test "replaces an existing entry if there is one already", %{
+          opts: opts
+        } do
           updated_login = %{@login1 | token: "new_token"}
 
           assert :ok = put(updated_login, opts)
@@ -124,8 +131,9 @@ defmodule Expected.Store.Test do
           assert list_user_logins("user", opts) == []
         end
 
-        test "works as well if there is no corresponding login",
-             %{opts: opts} do
+        test "works as well if there is no corresponding login", %{
+          opts: opts
+        } do
           assert :ok = delete("test", "1", opts)
         end
       end
