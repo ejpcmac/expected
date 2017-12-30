@@ -25,26 +25,13 @@ The `master` branch is reserved to releases: the development process occurs on
 
 ### Development environment
 
-1. Install:
+1. Install an Elixir environment.
 
-    * [asdf](https://github.com/asdf-vm/asdf)
-
-
-2. Install Erlang and Elixir plugins for asdf:
-
-        $ asdf plugin-add erlang https://github.com/asdf-vm/asdf-erlang.git
-        $ asdf plugin-add elixir https://github.com/asdf-vm/asdf-elixir.git
-
-3. In the project repository, install the build toolchain:
-
-        $ cd expected
-        $ asdf install
-
-4. Fetch the project dependencies and build the project:
+2. Fetch the project dependencies and build the project:
 
         $ mix do deps.get, compile
 
-5. Launch the tests:
+3. Launch the tests:
 
         $ mix test --stale
 
