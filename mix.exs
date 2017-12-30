@@ -31,7 +31,7 @@ defmodule Expected.Mixfile do
   defp deps do
     [
       # Development and test dependencies
-      {:credo, "~> 0.8.8", only: [:dev, :test], runtime: false},
+      {:credo, "~> 0.8.10", only: [:dev, :test], runtime: false},
       {:dialyxir, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:excoveralls, ">= 0.0.0", only: :test, runtime: false},
       {:mix_test_watch, ">= 0.0.0", only: :dev, runtime: false},
