@@ -33,6 +33,22 @@ defmodule Expected.ConfigurationError do
     """
   end
 
+  def message(%{reason: :no_auth_cookie}) do
+    """
+    Authentication cookie key not set.
+
+    You must set an authentication cookie name in the configuration:
+
+        config :expected,
+          store: :mnesia,
+          table: :expected,
+          auth_cookie: "_my_app_auth",  # Set your authentication cookie here.
+          session_store: PlugSessionMnesia.Store,
+          session_opts: [table: :session],
+          session_cookie: "_my_app_key"
+    """
+  end
+
   def message(%{reason: :no_session_store}) do
     """
     Session store not set.
@@ -42,9 +58,10 @@ defmodule Expected.ConfigurationError do
         config :expected,
           store: :mnesia,
           table: :expected,
-          session_store: PlugSessionMnesia.Store,
-          session_cookie: "_my_app_key",
-          session_opts: [table: :session]
+          auth_cookie: "_my_app_auth",
+          session_store: PlugSessionMnesia.Store,  # Set your session store.
+          session_opts: [table: :session],         # Set your options here.
+          session_cookie: "_my_app_key"
     """
   end
 
@@ -57,9 +74,10 @@ defmodule Expected.ConfigurationError do
         config :expected,
           store: :mnesia,
           table: :expected,
+          auth_cookie: "_my_app_auth",
           session_store: PlugSessionMnesia.Store,
-          session_cookie: "_my_app_key",
-          session_opts: [table: :session]
+          session_opts: [table: :session],
+          session_cookie: "_my_app_key"  # Set your session cookie here.
     """
   end
 end
@@ -78,25 +96,6 @@ defmodule Expected.PlugError do
     Please ensure to plug `Expected` in your endpoint:
 
         plug Expected
-    """
-  end
-end
-
-defmodule Expected.SessionError do
-  @moduledoc """
-  Error raised by `Expected.Plugs.register_login/2` if the session cookie is not
-  present.
-  """
-
-  defexception []
-
-  def message(_) do
-    session_cookie = Application.fetch_env!(:expected, :session_cookie)
-
-    """
-    The connection does not contain a cookie named \"#{session_cookie}\".
-
-    This problem can occur if the session has not been fetched.
     """
   end
 end

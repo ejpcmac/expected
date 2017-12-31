@@ -5,6 +5,7 @@ defmodule ExpectedTest do
   setup do
     Application.put_env(:expected, :store, :memory)
     Application.put_env(:expected, :process_name, :test_store)
+    Application.put_env(:expected, :auth_cookie, "_test_auth")
     Application.put_env(:expected, :session_store, :ets)
     Application.put_env(:expected, :session_cookie, "_test_key")
     Application.put_env(:expected, :session_opts, table: :test_session)
@@ -12,6 +13,7 @@ defmodule ExpectedTest do
     on_exit fn ->
       Application.delete_env(:expected, :store)
       Application.delete_env(:expected, :process_name)
+      Application.delete_env(:expected, :auth_cookie)
       Application.delete_env(:expected, :session_store)
       Application.delete_env(:expected, :session_cookie)
       Application.delete_env(:expected, :session_opts)
@@ -54,12 +56,32 @@ defmodule ExpectedTest do
                    fn -> Expected.init([]) end
     end
 
+    test "raises an exception if the authentication cookie is not configured" do
+      Application.delete_env(:expected, :auth_cookie)
+
+      assert_raise Expected.ConfigurationError,
+                   Expected.ConfigurationError.message(%{
+                     reason: :no_auth_cookie
+                   }),
+                   fn -> Expected.init([]) end
+    end
+
     test "raises an exception if the session store is not configured" do
       Application.delete_env(:expected, :session_store)
 
       assert_raise Expected.ConfigurationError,
                    Expected.ConfigurationError.message(%{
                      reason: :no_session_store
+                   }),
+                   fn -> Expected.init([]) end
+    end
+
+    test "raises an exception if the session cookie is not configured" do
+      Application.delete_env(:expected, :session_cookie)
+
+      assert_raise Expected.ConfigurationError,
+                   Expected.ConfigurationError.message(%{
+                     reason: :no_session_cookie
                    }),
                    fn -> Expected.init([]) end
     end

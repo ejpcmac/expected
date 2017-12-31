@@ -37,7 +37,6 @@ defmodule Expected.Plugs do
 
   alias Expected.NotLoadedUser
 
-  @auth_cookie "expected"
   @cookie_max_age 7_776_000
 
   @doc """
@@ -89,7 +88,7 @@ defmodule Expected.Plugs do
     expected =
       conn
       |> fetch_expected!()
-      |> put_cookies_opts(opts)
+      |> put_cookie_max_age(opts)
       |> Map.put(:username, fetch_username!(conn, opts))
       |> Map.put(:action, :register_login)
 
@@ -166,9 +165,7 @@ defmodule Expected.Plugs do
     current_user_field =
       get_option(opts, plug_config, :current_user, :current_user)
 
-    env = Application.get_all_env(:expected)
-    auth_cookie_name = get_option(opts, env, :auth_cookie, @auth_cookie)
-    auth_cookie = conn.cookies[auth_cookie_name]
+    auth_cookie = conn.cookies[expected.auth_cookie]
 
     with auth when auth != true <- get_session(conn, :authenticated),
          {:ok, user, serial, token} <- parse_auth_cookie(auth_cookie),
@@ -181,7 +178,7 @@ defmodule Expected.Plugs do
 
       expected =
         expected
-        |> put_cookies_opts(opts)
+        |> put_cookie_max_age(opts)
         |> Map.put(:login, login)
         |> Map.put(:action, :update_login)
 
@@ -195,8 +192,8 @@ defmodule Expected.Plugs do
     else
       true -> put_auth(conn, authenticated_field, current_user_field)
       {:error, :no_cookie} -> conn
-      {:error, :invalid} -> delete_resp_cookie(conn, auth_cookie_name)
-      {:error, :no_login} -> delete_resp_cookie(conn, auth_cookie_name)
+      {:error, :invalid} -> delete_resp_cookie(conn, expected.auth_cookie)
+      {:error, :no_login} -> delete_resp_cookie(conn, expected.auth_cookie)
       %{token: _token} -> put_private(conn, :unexpected_token, true)
     end
   end
@@ -228,26 +225,11 @@ defmodule Expected.Plugs do
     |> assign(current_user_field, get_session(conn, current_user_field))
   end
 
-  @spec put_cookies_opts(map(), keyword()) :: map()
-  defp put_cookies_opts(expected, opts) do
+  @spec put_cookie_max_age(map(), keyword()) :: map()
+  defp put_cookie_max_age(expected, opts) do
     env = Application.get_all_env(:expected)
-
-    expected
-    |> Map.put(:session_cookie, fetch_session_cookie_name!(opts))
-    |> Map.put(:auth_cookie, get_option(opts, env, :auth_cookie, @auth_cookie))
-    |> Map.put(
-      :cookie_max_age,
-      get_option(opts, env, :cookie_max_age, @cookie_max_age)
-    )
-  end
-
-  @spec fetch_session_cookie_name!(keyword()) :: String.t()
-  defp fetch_session_cookie_name!(opts) do
-    opts[:session_cookie] ||
-      case Application.fetch_env(:expected, :session_cookie) do
-        {:ok, key} -> key
-        :error -> raise Expected.ConfigurationError, reason: :no_session_cookie
-      end
+    cookie_max_age = get_option(opts, env, :cookie_max_age, @cookie_max_age)
+    Map.put(expected, :cookie_max_age, cookie_max_age)
   end
 
   @spec get_option(keyword(), keyword(), atom(), term()) :: term()

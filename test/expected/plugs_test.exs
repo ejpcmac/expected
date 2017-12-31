@@ -9,7 +9,7 @@ defmodule Expected.PlugsTest do
   alias Expected.NotLoadedUser
 
   @session_cookie "_test_key"
-  @auth_cookie "expected"
+  @auth_cookie "_test_auth"
   @ets_table :test_session
   @server :test_store
   @session_opts [
@@ -34,9 +34,10 @@ defmodule Expected.PlugsTest do
   setup do
     Application.put_env(:expected, :store, :memory)
     Application.put_env(:expected, :process_name, @server)
+    Application.put_env(:expected, :auth_cookie, @auth_cookie)
     Application.put_env(:expected, :session_store, :ets)
-    Application.put_env(:expected, :session_cookie, @session_cookie)
     Application.put_env(:expected, :session_opts, table: :test_session)
+    Application.put_env(:expected, :session_cookie, @session_cookie)
 
     :ets.new(@ets_table, [:named_table, :public])
     MemoryStore.start_link()
@@ -105,23 +106,6 @@ defmodule Expected.PlugsTest do
 
     ## Configuration
 
-    test "fetches the session key from the session cookie set in options" do
-      session_opts = Keyword.replace!(@session_opts, :key, "_other_key")
-
-      conn =
-        :get
-        |> conn("/")
-        |> Expected.call(Expected.init([]))
-        |> Plug.Session.call(Plug.Session.init(session_opts))
-        |> fetch_session()
-        |> put_session(:current_user, %{username: "user"})
-        |> register_login(session_cookie: "_other_key")
-        |> send_resp(:ok, "")
-
-      assert [%Login{} = login] = MemoryStore.list_user_logins("user", @server)
-      assert login.sid == conn.cookies["_other_key"]
-    end
-
     test "uses the current_user set in the application environment", %{
       conn: conn
     } do
@@ -185,38 +169,6 @@ defmodule Expected.PlugsTest do
                MemoryStore.list_user_logins("id", @server)
     end
 
-    test "uses the auth_cookie set in the application environment", %{
-      conn: conn
-    } do
-      Application.put_env(:expected, :auth_cookie, "some_cookie")
-
-      conn =
-        conn
-        |> put_session(:current_user, %{username: "user"})
-        |> register_login()
-        |> send_resp(:ok, "")
-
-      assert [%Login{} = login] = MemoryStore.list_user_logins("user", @server)
-
-      assert conn.cookies["some_cookie"] ==
-               "user.#{login.serial}.#{login.token}"
-    end
-
-    test "uses preferably the auth_cookie set in options", %{conn: conn} do
-      Application.put_env(:expected, :auth_cookie, "some_cookie")
-
-      conn =
-        conn
-        |> put_session(:current_user, %{username: "user"})
-        |> register_login(auth_cookie: "other_cookie")
-        |> send_resp(:ok, "")
-
-      assert [%Login{} = login] = MemoryStore.list_user_logins("user", @server)
-
-      assert conn.cookies["other_cookie"] ==
-               "user.#{login.serial}.#{login.token}"
-    end
-
     test "uses the auth_cookie max age set in the application environment", %{
       conn: conn
     } do
@@ -254,36 +206,6 @@ defmodule Expected.PlugsTest do
         |> conn("/")
         |> Plug.Session.call(Plug.Session.init(@session_opts))
         |> fetch_session()
-        |> put_session(:current_user, %{username: "user"})
-        |> register_login()
-        |> send_resp(:ok, "")
-      end
-    end
-
-    test "raises an exception if the session cookie is not configured", %{
-      conn: conn
-    } do
-      Application.delete_env(:expected, :session_cookie)
-
-      assert_raise Expected.ConfigurationError,
-                   Expected.ConfigurationError.message(%{
-                     reason: :no_session_cookie
-                   }),
-                   fn ->
-                     conn
-                     |> put_session(:current_user, %{username: "user"})
-                     |> register_login()
-                     |> send_resp(:ok, "")
-                   end
-    end
-
-    test "raises an exception if the session cookie is not present or empty", %{
-      conn: conn
-    } do
-      Application.put_env(:expected, :session_cookie, "_other_key")
-
-      assert_raise Expected.SessionError, fn ->
-        conn
         |> put_session(:current_user, %{username: "user"})
         |> register_login()
         |> send_resp(:ok, "")
@@ -512,47 +434,6 @@ defmodule Expected.PlugsTest do
       assert get_session(conn, :id) == @not_loaded_user
     end
 
-    test "uses the auth_cookie set in the application environment", %{
-      conn: conn
-    } do
-      Application.put_env(:expected, :auth_cookie, "some_cookie")
-
-      conn =
-        conn
-        |> put_req_cookie("some_cookie", @auth_cookie_content)
-        |> fetch_session()
-        |> authenticate()
-
-      assert conn.assigns[:authenticated] == true
-      assert conn.assigns[:current_user] == @not_loaded_user
-    end
-
-    test "uses preferably the auth_cookie set in options", %{conn: conn} do
-      Application.put_env(:expected, :auth_cookie, "some_cookie")
-
-      %Login{
-        username: "user2",
-        serial: "serial2",
-        token: "token2",
-        sid: "sid2",
-        created_at: DateTime.utc_now(),
-        last_login: DateTime.utc_now(),
-        last_ip: {127, 0, 0, 1},
-        last_useragent: "ExUnit"
-      }
-      |> MemoryStore.put(@server)
-
-      conn =
-        conn
-        |> put_req_cookie("some_cookie", @auth_cookie_content)
-        |> put_req_cookie("other_cookie", "user2.serial2.token2")
-        |> fetch_session()
-        |> authenticate(auth_cookie: "other_cookie")
-
-      assert conn.assigns[:authenticated] == true
-      assert conn.assigns[:current_user] == %NotLoadedUser{username: "user2"}
-    end
-
     test "uses the auth_cookie max age set in the application environment", %{
       conn: conn
     } do
@@ -658,7 +539,6 @@ defmodule Expected.PlugsTest do
         |> conn("/")
         |> Plug.Session.call(Plug.Session.init(@session_opts))
         |> fetch_session()
-        |> put_session(:current_user, %{username: "user"})
         |> authenticate()
         |> send_resp(:ok, "")
       end

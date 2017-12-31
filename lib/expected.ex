@@ -19,6 +19,7 @@ defmodule Expected do
   def init(_opts) do
     %{}
     |> init_store()
+    |> init_config()
     |> init_session()
   end
 
@@ -36,17 +37,27 @@ defmodule Expected do
     |> Map.put(:store_opts, store_opts)
   end
 
+  @spec init_config(map()) :: map()
+  defp init_config(expected) do
+    expected
+    |> Map.put(:auth_cookie, fetch_auth_cookie_name!())
+  end
+
   @spec init_session(map()) :: map()
   defp init_session(expected) do
+    session_cookie = fetch_session_cookie_name!()
+
     opts = [
       store: fetch_session_store!(),
-      key: fetch_session_cookie_name!()
+      key: session_cookie
     ]
 
     other_opts = Application.get_env(:expected, :session_opts, [])
     session_opts = Plug.Session.init(opts ++ other_opts)
 
-    Map.put(expected, :session_opts, session_opts)
+    expected
+    |> Map.put(:session_opts, session_opts)
+    |> Map.put(:session_cookie, session_cookie)
   end
 
   @spec fetch_store!() :: module()
@@ -60,6 +71,14 @@ defmodule Expected do
   @spec get_store(atom()) :: module()
   defp get_store(:memory), do: Expected.MemoryStore
   defp get_store(store), do: store
+
+  @spec fetch_auth_cookie_name!() :: String.t()
+  defp fetch_auth_cookie_name!() do
+    case Application.fetch_env(:expected, :auth_cookie) do
+      {:ok, auth_cookie} -> auth_cookie
+      :error -> raise Expected.ConfigurationError, reason: :no_auth_cookie
+    end
+  end
 
   @spec fetch_session_store!() :: atom()
   defp fetch_session_store!() do
@@ -105,7 +124,7 @@ defmodule Expected do
       username: username,
       serial: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
       token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
-      sid: fetch_sid!(conn, session_cookie),
+      sid: conn.cookies[session_cookie],
       created_at: DateTime.utc_now(),
       last_login: DateTime.utc_now(),
       last_ip: conn.remote_ip,
@@ -127,7 +146,7 @@ defmodule Expected do
     login = %{
       login
       | token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
-        sid: fetch_sid!(conn, session_cookie),
+        sid: conn.cookies[session_cookie],
         last_login: DateTime.utc_now(),
         last_ip: conn.remote_ip,
         last_useragent: get_user_agent(conn)
@@ -146,14 +165,6 @@ defmodule Expected do
     case get_req_header(conn, "user-agent") do
       [user_agent] -> user_agent
       _ -> ""
-    end
-  end
-
-  @spec fetch_sid!(Plug.Conn.t(), String.t()) :: String.t()
-  defp fetch_sid!(conn, session_cookie) do
-    case conn.cookies[session_cookie] do
-      nil -> raise Expected.SessionError
-      sid -> sid
     end
   end
 
