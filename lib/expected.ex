@@ -60,8 +60,8 @@ defmodule Expected do
     |> Map.put(:session_cookie, session_cookie)
   end
 
-  @spec fetch_store!() :: module()
-  defp fetch_store!() do
+  @spec fetch_store! :: module()
+  defp fetch_store! do
     case Application.fetch_env(:expected, :store) do
       {:ok, key} -> get_store(key)
       :error -> raise Expected.ConfigurationError, reason: :no_store
@@ -72,24 +72,24 @@ defmodule Expected do
   defp get_store(:memory), do: Expected.MemoryStore
   defp get_store(store), do: store
 
-  @spec fetch_auth_cookie_name!() :: String.t()
-  defp fetch_auth_cookie_name!() do
+  @spec fetch_auth_cookie_name! :: String.t()
+  defp fetch_auth_cookie_name! do
     case Application.fetch_env(:expected, :auth_cookie) do
       {:ok, auth_cookie} -> auth_cookie
       :error -> raise Expected.ConfigurationError, reason: :no_auth_cookie
     end
   end
 
-  @spec fetch_session_store!() :: atom()
-  defp fetch_session_store!() do
+  @spec fetch_session_store! :: atom()
+  defp fetch_session_store! do
     case Application.fetch_env(:expected, :session_store) do
       {:ok, session_store} -> session_store
       :error -> raise Expected.ConfigurationError, reason: :no_session_store
     end
   end
 
-  @spec fetch_session_cookie_name!() :: String.t()
-  defp fetch_session_cookie_name!() do
+  @spec fetch_session_cookie_name! :: String.t()
+  defp fetch_session_cookie_name! do
     case Application.fetch_env(:expected, :session_cookie) do
       {:ok, session_cookie} -> session_cookie
       :error -> raise Expected.ConfigurationError, reason: :no_session_cookie
