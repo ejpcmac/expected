@@ -20,13 +20,15 @@ defmodule Expected.PlugsTest do
 
   @not_loaded_user %NotLoadedUser{username: "user"}
   @auth_cookie_content "user.serial.token"
+  @now System.os_time()
+  @one_minute_ago @now - System.convert_time_unit(60, :seconds, :native)
   @login %Login{
     username: "user",
     serial: "serial",
     token: "token",
     sid: "sid",
-    created_at: DateTime.utc_now(),
-    last_login: DateTime.utc_now(),
+    created_at: @now,
+    last_login: @now,
     last_ip: {127, 0, 0, 1},
     last_useragent: "ExUnit"
   }
@@ -86,8 +88,8 @@ defmodule Expected.PlugsTest do
       assert is_binary(login.token)
       assert String.length(login.token) != 0
       assert login.sid == conn.cookies[@session_cookie]
-      assert %DateTime{} = login.created_at
-      assert %DateTime{} = login.last_login
+      assert login.created_at > @one_minute_ago
+      assert login.last_login > @one_minute_ago
       assert login.last_ip == {127, 0, 0, 1}
       assert login.last_useragent == "ExUnit"
     end
@@ -288,7 +290,7 @@ defmodule Expected.PlugsTest do
       assert login.token != @login.token
       assert login.sid != @login.sid
       assert login.created_at == @login.created_at
-      assert DateTime.compare(login.last_login, @login.last_login) == :gt
+      assert login.last_login > @login.last_login
       assert conn.cookies[@auth_cookie] == "user.#{login.serial}.#{login.token}"
     end
 

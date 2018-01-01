@@ -125,8 +125,8 @@ defmodule Expected do
       serial: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
       token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
       sid: conn.cookies[session_cookie],
-      created_at: DateTime.utc_now(),
-      last_login: DateTime.utc_now(),
+      created_at: System.os_time(),
+      last_login: System.os_time(),
       last_ip: conn.remote_ip,
       last_useragent: get_user_agent(conn)
     }
@@ -147,7 +147,7 @@ defmodule Expected do
       login
       | token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
         sid: conn.cookies[session_cookie],
-        last_login: DateTime.utc_now(),
+        last_login: System.os_time(),
         last_ip: conn.remote_ip,
         last_useragent: get_user_agent(conn)
     }

@@ -10,8 +10,8 @@ defmodule Expected.Login do
     * `token` - the token for next login
     * `sid` - the current session ID
     * `persistent?` - a flag to check if the login is persistent
-    * `created_at` - the initial login date
-    * `last_login` - the date of last login using this serial
+    * `created_at` - the initial login timestamp
+    * `last_login` - the timestamp of last login using this serial
     * `last_ip` - the last IP used to login with this serial
     * `last_useragent` - the last user agent used to login
   """
@@ -33,8 +33,8 @@ defmodule Expected.Login do
           serial: String.t(),
           token: String.t(),
           sid: String.t() | nil,
-          created_at: Calendar.datetime(),
-          last_login: Calendar.datetime(),
+          created_at: integer(),
+          last_login: integer(),
           last_ip: :inet.ip_address(),
           last_useragent: String.t()
         }

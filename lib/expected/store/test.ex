@@ -40,7 +40,7 @@ defmodule Expected.Store.Test do
 
       alias Expected.Login
 
-      @now DateTime.utc_now()
+      @now System.os_time()
 
       @login1 %Login{
         username: "user",
@@ -50,7 +50,7 @@ defmodule Expected.Store.Test do
         created_at: @now,
         last_login: @now,
         last_ip: {127, 0, 0, 1},
-        last_useragent: "test"
+        last_useragent: "ExUnit"
       }
 
       @login2 %{@login1 | serial: "2", token: "token2", sid: "sid2"}
