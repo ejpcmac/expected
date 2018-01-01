@@ -1,17 +1,12 @@
 defmodule Expected.PlugsTest do
-  use ExUnit.Case
-  use Plug.Test
+  use Expected.Case
 
   import Expected.Plugs
 
-  alias Expected.Login
-  alias Expected.MemoryStore
   alias Expected.NotLoadedUser
 
-  @session_cookie "_test_key"
-  @auth_cookie "_test_auth"
-  @ets_table :test_session
-  @server :test_store
+  @one_minute_ago @now - System.convert_time_unit(60, :seconds, :native)
+
   @session_opts [
     store: :ets,
     key: @session_cookie,
@@ -20,29 +15,9 @@ defmodule Expected.PlugsTest do
 
   @not_loaded_user %NotLoadedUser{username: "user"}
   @auth_cookie_content "user.serial.token"
-  @now System.os_time()
-  @one_minute_ago @now - System.convert_time_unit(60, :seconds, :native)
-  @login %Login{
-    username: "user",
-    serial: "serial",
-    token: "token",
-    sid: "sid",
-    created_at: @now,
-    last_login: @now,
-    last_ip: {127, 0, 0, 1},
-    last_useragent: "ExUnit"
-  }
 
   setup do
-    Application.put_env(:expected, :store, :memory)
-    Application.put_env(:expected, :process_name, @server)
-    Application.put_env(:expected, :auth_cookie, @auth_cookie)
-    Application.put_env(:expected, :session_store, :ets)
-    Application.put_env(:expected, :session_opts, table: :test_session)
-    Application.put_env(:expected, :session_cookie, @session_cookie)
-
-    :ets.new(@ets_table, [:named_table, :public])
-    MemoryStore.start_link()
+    setup_stores()
 
     conn =
       :get
@@ -50,7 +25,6 @@ defmodule Expected.PlugsTest do
       |> Expected.call(Expected.init([]))
 
     on_exit fn ->
-      Application.delete_env(:expected, :auth_cookie)
       Application.delete_env(:expected, :cookie_max_age)
       Application.delete_env(:expected, :plug_config)
     end
@@ -58,17 +32,17 @@ defmodule Expected.PlugsTest do
     %{conn: conn}
   end
 
-  defp setup_with_session(%{conn: conn}) do
+  defp with_session(%{conn: conn}) do
     %{conn: fetch_session(conn)}
   end
 
-  defp setup_with_login(%{conn: conn}) do
+  defp with_login(%{conn: conn}) do
     :ok = MemoryStore.put(@login, @server)
     %{conn: conn}
   end
 
   describe "register_login/2" do
-    setup [:setup_with_session]
+    setup [:with_session]
 
     ## Standard cases
 
@@ -230,7 +204,7 @@ defmodule Expected.PlugsTest do
   end
 
   describe "authenticate/2" do
-    setup [:setup_with_login]
+    setup [:with_login]
 
     ## Standard cases
 
