@@ -18,7 +18,9 @@ defmodule Expected.Case do
 
       @now System.os_time()
       @four_months System.convert_time_unit(10_368_000, :seconds, :native)
+      @ten_seconds System.convert_time_unit(10, :seconds, :native)
       @four_months_ago @now - @four_months
+      @ten_seconds_ago @now - @ten_seconds
 
       @login %Login{
         username: "user",
@@ -32,7 +34,20 @@ defmodule Expected.Case do
       }
 
       @other_login %{@login | username: "user2", sid: "sid2"}
-      @old_login %{@login | sid: "sid2", last_login: @four_months_ago}
+
+      @old_login %{
+        @login
+        | serial: "serial2",
+          sid: "sid2",
+          last_login: @four_months_ago
+      }
+
+      @not_so_old_login %{
+        @login
+        | serial: "serial3",
+          sid: "sid2",
+          last_login: @ten_seconds_ago
+      }
 
       setup do
         Application.put_env(:expected, :store, :memory)
@@ -41,6 +56,11 @@ defmodule Expected.Case do
         Application.put_env(:expected, :session_store, :ets)
         Application.put_env(:expected, :session_opts, table: @ets_table)
         Application.put_env(:expected, :session_cookie, @session_cookie)
+
+        on_exit fn ->
+          Application.delete_env(:expected, :stores)
+          Application.delete_env(:expected, :cookie_max_age)
+        end
       end
 
       defp setup_stores do

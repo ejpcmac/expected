@@ -15,12 +15,81 @@ defmodule Expected do
 
   @behaviour Plug
 
+  @cookie_max_age 7_776_000
+
+  #################
+  # API functions #
+  #################
+
+  @doc """
+  Lists the logins for the given `username`.
+  """
+  @spec list_user_logins(String.t()) :: [Login.t()]
+  def list_user_logins(username) do
+    %{store: store, store_opts: store_opts} = fetch_stores!()
+    store.list_user_logins(username, store_opts)
+  end
+
+  @doc """
+  Deletes a login given its `username` and `serial`.
+  """
+  @spec delete_login(String.t(), String.t()) :: :ok
+  def delete_login(username, serial) do
+    %{
+      store: store,
+      store_opts: store_opts,
+      session_opts: %{store: session_store, store_config: session_config}
+    } = fetch_stores!()
+
+    case store.get(username, serial, store_opts) do
+      {:ok, login} ->
+        store.delete(username, serial, store_opts)
+        session_store.delete(nil, login.sid, session_config)
+
+      {:error, :no_login} ->
+        :ok
+    end
+  end
+
+  @doc """
+  Cleans the old logins for the given `username`.
+  """
+  @spec clean_old_logins(String.t()) :: :ok
+  def clean_old_logins(username) do
+    %{store: store, store_opts: store_opts} = fetch_stores!()
+
+    cookie_max_age =
+      Application.get_env(:expected, :cookie_max_age, @cookie_max_age)
+
+    max_age = System.convert_time_unit(cookie_max_age, :seconds, :native)
+    oldest_valid_login = System.os_time() - max_age
+    logins = store.list_user_logins(username, store_opts)
+
+    Enum.each(logins, fn login ->
+      if login.last_login < oldest_valid_login,
+        do: store.delete(login.username, login.serial, store_opts)
+    end)
+  end
+
+  @spec fetch_stores! :: map()
+  defp fetch_stores! do
+    case Application.fetch_env(:expected, :stores) do
+      {:ok, stores} -> stores
+      :error -> raise Expected.PlugError
+    end
+  end
+
+  ##################
+  # Plug functions #
+  ##################
+
   @impl true
   def init(_opts) do
     %{}
     |> init_store()
     |> init_config()
     |> init_session()
+    |> put_stores_env()
   end
 
   @spec init_store(map()) :: map()
@@ -58,6 +127,18 @@ defmodule Expected do
     expected
     |> Map.put(:session_opts, session_opts)
     |> Map.put(:session_cookie, session_cookie)
+  end
+
+  @spec put_stores_env(map()) :: map()
+  defp put_stores_env(expected) do
+    stores = %{
+      store: expected.store,
+      store_opts: expected.store_opts,
+      session_opts: expected.session_opts
+    }
+
+    Application.put_env(:expected, :stores, stores)
+    expected
   end
 
   @spec fetch_store! :: module()
