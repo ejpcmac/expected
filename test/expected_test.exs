@@ -22,6 +22,10 @@ defmodule ExpectedTest do
       assert %{store_opts: @server} = Expected.init([])
     end
 
+    test "gets the auth_cookie from the application environment" do
+      assert %{auth_cookie: @auth_cookie} = Expected.init([])
+    end
+
     test "initialises the session" do
       assert %{
                session_opts: %{
@@ -29,6 +33,10 @@ defmodule ExpectedTest do
                  store_config: @ets_table
                }
              } = Expected.init([])
+    end
+
+    test "gets the session_cookie from the application environment" do
+      assert %{session_cookie: @session_cookie} = Expected.init([])
     end
 
     ## Problems
