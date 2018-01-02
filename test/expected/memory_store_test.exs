@@ -1,5 +1,5 @@
 defmodule Expected.MemoryStoreTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
   use Expected.Store.Test, store: Expected.MemoryStore
 
   @server :store_test
@@ -24,14 +24,12 @@ defmodule Expected.MemoryStoreTest do
     end
   end
 
-  describe "init/0" do
+  describe "init/1" do
     test "returns the server name fetched from options" do
       assert init(process_name: @server) == @server
     end
 
     test "raises an exception if there is no process_name in the options" do
-      Application.delete_env(:expected, :process_name)
-
       assert_raise Expected.ConfigurationError,
                    Expected.ConfigurationError.message(%{
                      reason: :no_process_name
