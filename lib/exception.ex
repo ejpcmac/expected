@@ -33,6 +33,19 @@ defmodule Expected.ConfigurationError do
     """
   end
 
+  def message(%{reason: :no_mnesia_table}) do
+    """
+    Table not configured for the `:mnesia` store.
+
+    You must set a table for the `:mnesia` store in the configuration:
+
+        config :expected,
+          store: :mnesia,
+          table: :logins,
+          ...
+    """
+  end
+
   def message(%{reason: :no_auth_cookie}) do
     """
     Authentication cookie key not set.
@@ -153,6 +166,38 @@ defmodule Expected.InvalidUserError do
         conn
         |> put_session(#{current_user}, %User{user_id: "user"})
         |> register_login(username: :user_id)
+    """
+  end
+end
+
+defmodule Expected.MnesiaStoreError do
+  @doc """
+  Error raised by the `:mnesia` store when there is a problem.
+  """
+
+  defexception [:reason]
+
+  def message(%{reason: :table_not_exists}) do
+    """
+    The Mnesia table given to the login store does not exist.
+
+    Please ensure the table has been created. You can ask mix to create it for
+    you:
+
+        mix expected.mnesia.setup
+    """
+  end
+
+  def message(%{reason: :invalid_table_format}) do
+    """
+    The Mnesia table given to the login store has not the correct format.
+
+    Please ensure it has the following format:
+
+        {
+          username :: String.t(),
+          logins :: %{required(String.t()) => Expected.Login.t()}
+        }
     """
   end
 end

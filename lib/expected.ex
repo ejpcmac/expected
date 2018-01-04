@@ -153,6 +153,7 @@ defmodule Expected do
 
   @spec get_store(atom()) :: module()
   defp get_store(:memory), do: Expected.MemoryStore
+  defp get_store(:mnesia), do: Expected.MnesiaStore
   defp get_store(store), do: store
 
   @spec fetch_auth_cookie_name! :: String.t()

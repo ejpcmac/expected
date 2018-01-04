@@ -110,6 +110,12 @@ defmodule ExpectedTest do
       assert %{store: Expected.MemoryStore} = Expected.init([])
     end
 
+    test "converts the :mnesia store to Expected.MnesiaStore" do
+      Application.put_env(:expected, :store, :mnesia)
+      Application.put_env(:expected, :table, :logins)
+      assert %{store: Expected.MnesiaStore} = Expected.init([])
+    end
+
     test "keeps unknown store as is" do
       Application.put_env(:expected, :store, Expected.MemoryStore)
       assert %{store: Expected.MemoryStore} = Expected.init([])
