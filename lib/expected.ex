@@ -12,6 +12,8 @@ defmodule Expected do
     ]
 
   alias Expected.Login
+  alias Expected.ConfigurationError
+  alias Expected.PlugError
 
   @behaviour Plug
 
@@ -75,7 +77,7 @@ defmodule Expected do
   defp fetch_stores! do
     case Application.fetch_env(:expected, :stores) do
       {:ok, stores} -> stores
-      :error -> raise Expected.PlugError
+      :error -> raise PlugError
     end
   end
 
@@ -145,7 +147,7 @@ defmodule Expected do
   defp fetch_store! do
     case Application.fetch_env(:expected, :store) do
       {:ok, key} -> get_store(key)
-      :error -> raise Expected.ConfigurationError, reason: :no_store
+      :error -> raise ConfigurationError, reason: :no_store
     end
   end
 
@@ -157,7 +159,7 @@ defmodule Expected do
   defp fetch_auth_cookie_name! do
     case Application.fetch_env(:expected, :auth_cookie) do
       {:ok, auth_cookie} -> auth_cookie
-      :error -> raise Expected.ConfigurationError, reason: :no_auth_cookie
+      :error -> raise ConfigurationError, reason: :no_auth_cookie
     end
   end
 
@@ -165,7 +167,7 @@ defmodule Expected do
   defp fetch_session_store! do
     case Application.fetch_env(:expected, :session_store) do
       {:ok, session_store} -> session_store
-      :error -> raise Expected.ConfigurationError, reason: :no_session_store
+      :error -> raise ConfigurationError, reason: :no_session_store
     end
   end
 
@@ -173,7 +175,7 @@ defmodule Expected do
   defp fetch_session_cookie_name! do
     case Application.fetch_env(:expected, :session_cookie) do
       {:ok, session_cookie} -> session_cookie
-      :error -> raise Expected.ConfigurationError, reason: :no_session_cookie
+      :error -> raise ConfigurationError, reason: :no_session_cookie
     end
   end
 

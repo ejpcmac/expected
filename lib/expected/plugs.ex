@@ -36,6 +36,9 @@ defmodule Expected.Plugs do
     ]
 
   alias Expected.NotLoadedUser
+  alias Expected.CurrentUserError
+  alias Expected.InvalidUserError
+  alias Expected.PlugError
 
   @cookie_max_age 7_776_000
 
@@ -200,7 +203,7 @@ defmodule Expected.Plugs do
 
   @spec fetch_expected!(Plug.Conn.t()) :: map()
   defp fetch_expected!(%{private: %{expected: expected}}), do: expected
-  defp fetch_expected!(_), do: raise(Expected.PlugError)
+  defp fetch_expected!(_), do: raise(PlugError)
 
   @spec parse_auth_cookie(String.t()) ::
           {:ok, String.t(), String.t(), String.t()}
@@ -245,8 +248,8 @@ defmodule Expected.Plugs do
 
     case get_session(conn, current_user) do
       %{^username => current_username} -> current_username
-      nil -> raise Expected.CurrentUserError
-      _ -> raise Expected.InvalidUserError
+      nil -> raise CurrentUserError
+      _ -> raise InvalidUserError
     end
   end
 end

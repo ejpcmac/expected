@@ -1,6 +1,9 @@
 defmodule ExpectedTest do
   use Expected.Case
 
+  alias Expected.ConfigurationError
+  alias Expected.PlugError
+
   #################
   # API functions #
   #################
@@ -28,7 +31,7 @@ defmodule ExpectedTest do
     test "raises an exception if Expected has not been plugged" do
       Application.delete_env(:expected, :stores)
 
-      assert_raise Expected.PlugError, fn ->
+      assert_raise PlugError, fn ->
         Expected.list_user_logins("user")
       end
     end
@@ -54,7 +57,7 @@ defmodule ExpectedTest do
     test "raises an exception if Expected has not been plugged" do
       Application.delete_env(:expected, :stores)
 
-      assert_raise Expected.PlugError, fn ->
+      assert_raise PlugError, fn ->
         Expected.delete_login("user", "serial")
       end
     end
@@ -85,7 +88,7 @@ defmodule ExpectedTest do
     test "raises an exception if Expected has not been plugged" do
       Application.delete_env(:expected, :stores)
 
-      assert_raise Expected.PlugError, fn ->
+      assert_raise PlugError, fn ->
         Expected.clean_old_logins("user")
       end
     end
@@ -152,38 +155,32 @@ defmodule ExpectedTest do
     test "raises an exception if the store is not configured" do
       Application.delete_env(:expected, :store)
 
-      assert_raise Expected.ConfigurationError,
-                   Expected.ConfigurationError.message(%{reason: :no_store}),
+      assert_raise ConfigurationError,
+                   ConfigurationError.message(%{reason: :no_store}),
                    fn -> Expected.init([]) end
     end
 
     test "raises an exception if the authentication cookie is not configured" do
       Application.delete_env(:expected, :auth_cookie)
 
-      assert_raise Expected.ConfigurationError,
-                   Expected.ConfigurationError.message(%{
-                     reason: :no_auth_cookie
-                   }),
+      assert_raise ConfigurationError,
+                   ConfigurationError.message(%{reason: :no_auth_cookie}),
                    fn -> Expected.init([]) end
     end
 
     test "raises an exception if the session store is not configured" do
       Application.delete_env(:expected, :session_store)
 
-      assert_raise Expected.ConfigurationError,
-                   Expected.ConfigurationError.message(%{
-                     reason: :no_session_store
-                   }),
+      assert_raise ConfigurationError,
+                   ConfigurationError.message(%{reason: :no_session_store}),
                    fn -> Expected.init([]) end
     end
 
     test "raises an exception if the session cookie is not configured" do
       Application.delete_env(:expected, :session_cookie)
 
-      assert_raise Expected.ConfigurationError,
-                   Expected.ConfigurationError.message(%{
-                     reason: :no_session_cookie
-                   }),
+      assert_raise ConfigurationError,
+                   ConfigurationError.message(%{reason: :no_session_cookie}),
                    fn -> Expected.init([]) end
     end
   end

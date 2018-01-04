@@ -4,6 +4,9 @@ defmodule Expected.PlugsTest do
   import Expected.Plugs
 
   alias Expected.NotLoadedUser
+  alias Expected.CurrentUserError
+  alias Expected.InvalidUserError
+  alias Expected.PlugError
 
   @one_minute_ago @now - System.convert_time_unit(60, :seconds, :native)
 
@@ -177,7 +180,7 @@ defmodule Expected.PlugsTest do
     ## Problems
 
     test "raises an exception if `Expected` has not been plugged" do
-      assert_raise Expected.PlugError, fn ->
+      assert_raise PlugError, fn ->
         :get
         |> conn("/")
         |> Plug.Session.call(Plug.Session.init(@session_opts))
@@ -189,12 +192,12 @@ defmodule Expected.PlugsTest do
     end
 
     test "raises an exception if the current_user is not set", %{conn: conn} do
-      assert_raise Expected.CurrentUserError, fn -> register_login(conn) end
+      assert_raise CurrentUserError, fn -> register_login(conn) end
     end
 
     test "raises an exception if the current_user does not contain a username
           field", %{conn: conn} do
-      assert_raise Expected.InvalidUserError, fn ->
+      assert_raise InvalidUserError, fn ->
         conn
         |> put_session(:current_user, %{})
         |> register_login()
@@ -510,7 +513,7 @@ defmodule Expected.PlugsTest do
     end
 
     test "raises an exception if `Expected` has not been plugged" do
-      assert_raise Expected.PlugError, fn ->
+      assert_raise PlugError, fn ->
         :get
         |> conn("/")
         |> Plug.Session.call(Plug.Session.init(@session_opts))

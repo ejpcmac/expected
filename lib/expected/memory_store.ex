@@ -22,6 +22,8 @@ defmodule Expected.MemoryStore do
       Expected.MemoryStore.start_link(%{})
   """
 
+  alias Expected.ConfigurationError
+
   @behaviour Expected.Store
 
   @doc """
@@ -35,7 +37,7 @@ defmodule Expected.MemoryStore do
         GenServer.start_link(__MODULE__.Server, default, name: name)
 
       :error ->
-        raise Expected.ConfigurationError, reason: :no_process_name
+        raise ConfigurationError, reason: :no_process_name
     end
   end
 
@@ -43,7 +45,7 @@ defmodule Expected.MemoryStore do
   def init(opts) do
     case Keyword.fetch(opts, :process_name) do
       {:ok, server} -> server
-      :error -> raise Expected.ConfigurationError, reason: :no_process_name
+      :error -> raise ConfigurationError, reason: :no_process_name
     end
   end
 
