@@ -32,11 +32,11 @@ defmodule Expected.MnesiaStore do
       }
   """
 
+  @behaviour Expected.Store
+
   alias Expected.Login
   alias Expected.ConfigurationError
   alias Expected.MnesiaStoreError
-
-  @behaviour Expected.Store
 
   @impl true
   def init(opts) do

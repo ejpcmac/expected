@@ -11,7 +11,7 @@ defmodule Expected.MemoryStore do
       config :expected,
         store: :memory,
         process_name: :test_store,
-        session_key: "_test_key"
+        ...
 
   You also must start the server:
 
@@ -22,9 +22,9 @@ defmodule Expected.MemoryStore do
       Expected.MemoryStore.start_link(%{})
   """
 
-  alias Expected.ConfigurationError
-
   @behaviour Expected.Store
+
+  alias Expected.ConfigurationError
 
   @doc """
   Starts the store server.
