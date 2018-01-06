@@ -9,6 +9,9 @@ defmodule Expected.MnesiaStoreTest do
 
   # Must be defined for Expected.Store.Test to work.
   defp init_store(_) do
+    # Ensure there is no previous Mnesia database on disk.
+    File.rm_rf("Mnesia.nonode@nohost")
+
     :mnesia.start()
     :mnesia.create_table(@table, attributes: [:username, :logins])
 

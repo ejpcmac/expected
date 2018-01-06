@@ -201,3 +201,16 @@ defmodule Expected.MnesiaStoreError do
     """
   end
 end
+
+defmodule Expected.MnesiaTableExistsError do
+  @moduledoc """
+  Error raised by `Expected.MnesiaStore.Helpers.setup!/0` if a table already
+  exists and has different attributes.
+  """
+
+  defexception [:table]
+
+  def message(attrs) do
+    "The table #{attrs.table} already exists. Please choose another name."
+  end
+end
