@@ -21,6 +21,24 @@ defmodule ExpectedTest do
     :ok
   end
 
+  describe "unexpected_token?/1" do
+    test "returns true if there has been an authentication attempt with a bad
+          token" do
+      conn =
+        :get
+        |> conn("/")
+        |> assign(:unexpected_token, true)
+
+      assert Expected.unexpected_token?(conn) == true
+    end
+
+    test "returns false if ther has not been an authentication attempt with a
+          bad token" do
+      conn = conn(:get, "/")
+      assert Expected.unexpected_token?(conn) == false
+    end
+  end
+
   describe "list_user_logins/1" do
     setup [:with_login]
 

@@ -24,6 +24,12 @@ defmodule Expected do
   #################
 
   @doc """
+  Returns wether there has been an authentication attempt with a bad token.
+  """
+  @spec unexpected_token?(Plug.Conn.t()) :: boolean()
+  def unexpected_token?(conn), do: !!conn.assigns[:unexpected_token]
+
+  @doc """
   Lists the logins for the given `username`.
   """
   @spec list_user_logins(String.t()) :: [Login.t()]
