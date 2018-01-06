@@ -43,7 +43,7 @@ defmodule Expected.Mixfile do
       {:ex_unit_notifier, ">= 0.0.0", only: :test, runtime: false},
 
       # Project dependencies
-      {:plug, "~> 1.4", optional: true},
+      {:plug, "~> 1.4"},
 
       # Documentation dependencies
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
