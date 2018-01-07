@@ -29,6 +29,7 @@ The `master` branch is reserved to releases: the development process occurs on
 
 2. Fetch the project dependencies and build the project:
 
+        $ cd expected
         $ mix do deps.get, compile
 
 3. Launch the tests:
@@ -84,3 +85,8 @@ To make a change, please follow this workflow:
 
 7. If it’s all good, open a pull request to merge your branch into the `develop`
     branch on the main repository.
+
+## Coding style
+
+Please format your code with `mix format` or your editor and follow
+[this style guide](https://github.com/christopheradams/elixir_style_guide).
