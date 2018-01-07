@@ -60,6 +60,16 @@ defmodule Expected do
   end
 
   @doc """
+  Deletes all logins for a given `username`.
+  """
+  @spec delete_all_user_logins(String.t()) :: :ok
+  def delete_all_user_logins(username) do
+    username
+    |> list_user_logins()
+    |> Enum.each(&delete_login(username, &1.serial))
+  end
+
+  @doc """
   Cleans the old logins for the given `username`.
   """
   @spec clean_old_logins(String.t()) :: :ok

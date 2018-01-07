@@ -81,6 +81,32 @@ defmodule ExpectedTest do
     end
   end
 
+  describe "delete_all_user_logins/1" do
+    setup [:with_login]
+
+    test "deletes all user logins for the given username" do
+      assert :ok = Expected.delete_all_user_logins("user")
+      assert MemoryStore.list_user_logins("user", @server) == []
+    end
+
+    test "deletes the sessions associated with the logins if they exist" do
+      assert :ok = Expected.delete_all_user_logins("user")
+      assert Plug.Session.ETS.get(nil, "sid", @ets_table) == {nil, %{}}
+    end
+
+    test "does nothing if the user has no login in the store" do
+      assert :ok = Expected.delete_all_user_logins("false_user")
+    end
+
+    test "raises an exception if Expected has not been plugged" do
+      Application.delete_env(:expected, :stores)
+
+      assert_raise PlugError, fn ->
+        Expected.delete_all_user_logins("user")
+      end
+    end
+  end
+
   describe "clean_old_logins/1" do
     setup [:with_login]
 

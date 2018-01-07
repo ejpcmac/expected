@@ -173,7 +173,7 @@ defmodule Expected.Plugs do
     with auth when auth != true <- get_session(conn, :authenticated),
          {:ok, user, serial, token} <- parse_auth_cookie(auth_cookie),
          {:ok, login} <- expected.store.get(user, serial, expected.store_opts),
-         %{token: ^token} <- login do
+         %{username: ^user, token: ^token} <- login do
       session_store = expected.session_opts.store
       session_store.delete(nil, login.sid, expected.session_opts.store_config)
 
@@ -205,7 +205,9 @@ defmodule Expected.Plugs do
       {:error, :no_login} ->
         delete_resp_cookie(conn, expected.auth_cookie)
 
-      %{token: _token} ->
+      %{username: username, token: _token} ->
+        Expected.delete_all_user_logins(username)
+
         conn
         |> put_private(:unexpected_token, true)
         |> delete_resp_cookie(expected.auth_cookie)

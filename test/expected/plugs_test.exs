@@ -523,6 +523,17 @@ defmodule Expected.PlugsTest do
       assert conn.cookies[@auth_cookie] == nil
     end
 
+    test "delete all the user’s logins if the token does not match", %{
+      conn: conn
+    } do
+      conn
+      |> put_req_cookie(@auth_cookie, "user.serial.bad_token")
+      |> fetch_session()
+      |> authenticate()
+
+      assert MemoryStore.list_user_logins("user", @server) == []
+    end
+
     test "raises an exception if `Expected` has not been plugged" do
       assert_raise PlugError, fn ->
         :get
