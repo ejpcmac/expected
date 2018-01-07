@@ -193,11 +193,22 @@ defmodule Expected.Plugs do
       |> assign(current_user_field, not_loaded_user)
       |> put_private(:expected, expected)
     else
-      true -> put_auth(conn, authenticated_field, current_user_field)
-      {:error, :no_cookie} -> conn
-      {:error, :invalid} -> delete_resp_cookie(conn, expected.auth_cookie)
-      {:error, :no_login} -> delete_resp_cookie(conn, expected.auth_cookie)
-      %{token: _token} -> put_private(conn, :unexpected_token, true)
+      true ->
+        put_auth(conn, authenticated_field, current_user_field)
+
+      {:error, :no_cookie} ->
+        conn
+
+      {:error, :invalid} ->
+        delete_resp_cookie(conn, expected.auth_cookie)
+
+      {:error, :no_login} ->
+        delete_resp_cookie(conn, expected.auth_cookie)
+
+      %{token: _token} ->
+        conn
+        |> put_private(:unexpected_token, true)
+        |> delete_resp_cookie(expected.auth_cookie)
     end
   end
 
