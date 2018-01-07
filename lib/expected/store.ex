@@ -1,6 +1,9 @@
 defmodule Expected.Store do
   @moduledoc """
-  Specification for login store.
+  Specification for login stores.
+
+  To automatically generate tests for a new store, you can use
+  `Expected.Store.Test`.
   """
 
   alias Expected.Login
@@ -9,7 +12,7 @@ defmodule Expected.Store do
   Initialises the store.
 
   The value returned from this callback is passed as the last argument to
-  `list_user_logins/2`, `get/3`, `put/2` and `delete/3`.
+  `c:list_user_logins/2`, `c:get/3`, `c:put/2` and `c:delete/3`.
   """
   @callback init(opts :: keyword()) :: term()
 

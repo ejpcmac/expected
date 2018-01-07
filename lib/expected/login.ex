@@ -9,7 +9,6 @@ defmodule Expected.Login do
                  given machine)
     * `token` - the token for next login
     * `sid` - the current session ID
-    * `persistent?` - a flag to check if the login is persistent
     * `created_at` - the initial login timestamp
     * `last_login` - the timestamp of last login using this serial
     * `last_ip` - the last IP used to login with this serial

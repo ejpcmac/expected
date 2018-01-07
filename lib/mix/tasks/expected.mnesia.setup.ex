@@ -16,13 +16,13 @@ defmodule Mix.Tasks.Expected.Mnesia.Setup do
 
   Then, simply run this mix task:
 
-      mix expected.mnesia.setup
+      $ mix expected.mnesia.setup
 
   If you use to start your IEx development sessions with a node name, you must
   also run `expected.mnesia.setup` with the same node name to effictively create
   the Mnesia table on the good node:
 
-      elixir --sname "my_node@my_host" -S mix expected.mnesia.setup
+      $ elixir --sname "my_node@my_host" -S mix expected.mnesia.setup
 
   ## Configuration
 

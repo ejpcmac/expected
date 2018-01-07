@@ -15,10 +15,10 @@ defmodule Expected.Plugs do
 
       config :expected,
         store: :mnesia,
-        table: :expected,
+        table: :logins,
+        auth_cookie: "_my_app_auth",
         session_store: PlugSessionMnesia.Store,  # For instance.
         session_cookie: "_my_app_key",   # The Plug.Session `:key` option.
-        session_opts: [table: :session]  # Other Plug.Session options.
 
   For the login registration to work, Expected needs to get the session ID from
   the session cookie. **You must use a session store that stores the session
@@ -68,22 +68,20 @@ defmodule Expected.Plugs do
 
   ## Authentication cookie
 
-  Authentication information is stored in a cookie. By default, it is named
-  `"expected"` and is valid for three months after the last successful
-  authentication. You can change these parameters in the application
-  configuration:
+  Authentication information is stored in a cookie. By default, it is valid for
+  three months after the last successful authentication. You can change this in
+  the application configuration:
 
       config :expected,
         ...
-        auth_cookie: "_my_app_auth",  # Set the authentication cookie name here.
         cookie_max_age: 86_400        # Set to one day, for example.
 
-  Alternatively, you can set them locally:
+  Alternatively, you can set it locally:
 
       conn
       |> put_session(:current_user, %User{username: "user", name: "A User"})
       |> assign(:persistent_login, true)
-      |> register_login(auth_cookie: "_my_app_auth", max_age: 86_400)
+      |> register_login(cookie_max_age: 86_400)
   """
   @spec register_login(Plug.Conn.t()) :: Plug.Conn.t()
   @spec register_login(Plug.Conn.t(), keyword()) :: Plug.Conn.t()
@@ -122,21 +120,20 @@ defmodule Expected.Plugs do
   ## Cookie authentication
 
   If the session is not yet authenticated, this plug checks for an
-  authentication cookie. By default, it is named `"expected"` and is valid for
-  three months after the last successful authentication. You can change these
-  parameters in the application configuration:
+  authentication cookie. By default, it is valid for three months after the last
+  successful authentication. You can change this in the application
+  configuration:
 
       config :expected,
         ...
-        auth_cookie: "_my_app_auth",  # Set the authentication cookie name here.
         cookie_max_age: 86_400        # Set to one day, for example.
 
-  Alternatively, you can set them locally:
+  Alternatively, you can set it locally:
 
       conn
       |> put_session(:current_user, %User{username: "user", name: "A User"})
       |> assign(:persistent_login, true)
-      |> register_login(auth_cookie: "_my_app_auth", max_age: 86_400)
+      |> register_login(cookie_max_age: 86_400)
 
   ## Alerts
 

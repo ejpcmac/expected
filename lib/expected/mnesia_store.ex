@@ -1,6 +1,6 @@
 defmodule Expected.MnesiaStore do
   @moduledoc """
-  Stores the login data in a Mnesia table.
+  Stores login data in a Mnesia table.
 
   To use this store, configure `:expected` accordingly and set the table name in
   the application configuration:

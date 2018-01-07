@@ -15,7 +15,7 @@ defmodule Expected.ConfigurationError do
 
         config :expected,
           store: :mnesia,
-          table: :expected,
+          table: :logins,
           ...
     """
   end
@@ -54,10 +54,9 @@ defmodule Expected.ConfigurationError do
 
         config :expected,
           store: :mnesia,
-          table: :expected,
+          table: :logins,
           auth_cookie: "_my_app_auth",  # Set your authentication cookie here.
           session_store: PlugSessionMnesia.Store,
-          session_opts: [table: :session],
           session_cookie: "_my_app_key"
     """
   end
@@ -70,10 +69,9 @@ defmodule Expected.ConfigurationError do
 
         config :expected,
           store: :mnesia,
-          table: :expected,
+          table: :logins,
           auth_cookie: "_my_app_auth",
           session_store: PlugSessionMnesia.Store,  # Set your session store.
-          session_opts: [table: :session],         # Set your options here.
           session_cookie: "_my_app_key"
     """
   end
@@ -86,10 +84,9 @@ defmodule Expected.ConfigurationError do
 
         config :expected,
           store: :mnesia,
-          table: :expected,
+          table: :logins,
           auth_cookie: "_my_app_auth",
           session_store: PlugSessionMnesia.Store,
-          session_opts: [table: :session],
           session_cookie: "_my_app_key"  # Set your session cookie here.
     """
   end
@@ -171,7 +168,7 @@ defmodule Expected.InvalidUserError do
 end
 
 defmodule Expected.MnesiaStoreError do
-  @doc """
+  @moduledoc """
   Error raised by the `:mnesia` store when there is a problem.
   """
 

@@ -25,9 +25,9 @@ defmodule Expected.MnesiaStore.Helpers do
         table: :logins,
         ...
 
-  It then creates a Mnesia table with copies in RAM and on disk, so that
-  sessions are persistent accross application reboots. For more information
-  about the process, see `setup/2`.
+  It then creates a Mnesia table with copies in RAM and on disk, so that logins
+  are persistent accross application reboots. For more information about the
+  process, see `setup/2`.
 
   If the table already exists *with different attributes*, an
   `Expected.MnesiaTableExistsError` is raised.
@@ -46,7 +46,7 @@ defmodule Expected.MnesiaStore.Helpers do
   * `persistent?` - persistence mode. `:persistent` automatically sets the
     schema and the table to keep a copy of their data in both RAM and disk.
     `:volatile` lets the schema copy mode untouched and creates a RAM-only
-    session store.
+    login store.
 
   ## Return values
 
