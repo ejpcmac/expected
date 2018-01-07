@@ -177,6 +177,8 @@ defmodule Expected.Plugs do
       session_store = expected.session_opts.store
       session_store.delete(nil, login.sid, expected.session_opts.store_config)
 
+      Expected.clean_old_logins(user)
+
       not_loaded_user = %NotLoadedUser{username: user}
 
       expected =
