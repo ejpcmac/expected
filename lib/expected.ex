@@ -223,6 +223,10 @@ defmodule Expected do
       end
   """
 
+  @behaviour Plug
+
+  use Application
+
   import Plug.Conn,
     only: [
       get_req_header: 2,
@@ -233,9 +237,6 @@ defmodule Expected do
 
   alias Expected.Login
   alias Expected.ConfigurationError
-  alias Expected.PlugError
-
-  @behaviour Plug
 
   @cookie_max_age 7_776_000
 
@@ -254,7 +255,7 @@ defmodule Expected do
   """
   @spec list_user_logins(String.t()) :: [Login.t()]
   def list_user_logins(username) do
-    %{store: store, store_opts: store_opts} = fetch_stores!()
+    %{store: store, store_opts: store_opts} = config().stores()
     store.list_user_logins(username, store_opts)
   end
 
@@ -267,7 +268,7 @@ defmodule Expected do
       store: store,
       store_opts: store_opts,
       session_opts: %{store: session_store, store_config: session_config}
-    } = fetch_stores!()
+    } = config().stores()
 
     case store.get(username, serial, store_opts) do
       {:ok, login} ->
@@ -297,7 +298,7 @@ defmodule Expected do
   """
   @spec clean_old_logins(String.t()) :: :ok
   def clean_old_logins(username) do
-    %{store: store, store_opts: store_opts} = fetch_stores!()
+    %{store: store, store_opts: store_opts} = config().stores()
 
     cookie_max_age =
       Application.get_env(:expected, :cookie_max_age, @cookie_max_age)
@@ -312,25 +313,58 @@ defmodule Expected do
     end)
   end
 
-  @spec fetch_stores! :: map()
-  defp fetch_stores! do
-    case Application.fetch_env(:expected, :stores) do
-      {:ok, stores} -> stores
-      :error -> raise PlugError
-    end
+  # Define a private function to avoid unavailable module warnings on
+  # compilation.
+  @spec config :: module()
+  defp config, do: Expected.Config
+
+  #########################
+  # Application functions #
+  #########################
+
+  @impl Application
+  def start(_type, _args) do
+    compile_config_module()
+
+    # Return self() as PID as we don’t need a supervision tree for now.
+    {:ok, self()}
+  end
+
+  # Compiles the `Expected.Config` module using values fetched from the
+  # application environment. Functions from this module are used like runtime
+  # constants.
+  @spec compile_config_module :: :ok
+  defp compile_config_module do
+    expected = init([])
+
+    stores = %{
+      store: expected.store,
+      store_opts: expected.store_opts,
+      session_opts: expected.session_opts
+    }
+
+    config_module =
+      quote do
+        # credo:disable-for-next-line
+        defmodule Expected.Config do
+          def stores, do: unquote(Macro.escape(stores))
+        end
+      end
+
+    _ = Code.compile_quoted(config_module)
+    :ok
   end
 
   ##################
   # Plug functions #
   ##################
 
-  @impl true
+  @impl Plug
   def init(_opts) do
     %{}
     |> init_store()
     |> init_config()
     |> init_session()
-    |> put_stores_env()
   end
 
   @spec init_store(map()) :: map()
@@ -370,18 +404,6 @@ defmodule Expected do
     |> Map.put(:session_cookie, session_cookie)
   end
 
-  @spec put_stores_env(map()) :: map()
-  defp put_stores_env(expected) do
-    stores = %{
-      store: expected.store,
-      store_opts: expected.store_opts,
-      session_opts: expected.session_opts
-    }
-
-    Application.put_env(:expected, :stores, stores)
-    expected
-  end
-
   @spec fetch_store! :: module()
   defp fetch_store! do
     case Application.fetch_env(:expected, :store) do
@@ -419,7 +441,7 @@ defmodule Expected do
     end
   end
 
-  @impl true
+  @impl Plug
   def call(conn, opts) do
     conn
     |> put_private(:expected, opts)

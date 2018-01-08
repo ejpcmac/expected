@@ -2,7 +2,6 @@ defmodule ExpectedTest do
   use Expected.Case
 
   alias Expected.ConfigurationError
-  alias Expected.PlugError
 
   #################
   # API functions #
@@ -10,7 +9,6 @@ defmodule ExpectedTest do
 
   defp with_login(_) do
     setup_stores()
-    Expected.init([])
 
     :ok = MemoryStore.put(@login, @server)
     :ok = MemoryStore.put(@other_login, @server)
@@ -45,14 +43,6 @@ defmodule ExpectedTest do
     test "lists logins for the given user" do
       assert Expected.list_user_logins("user") == [@login]
     end
-
-    test "raises an exception if Expected has not been plugged" do
-      Application.delete_env(:expected, :stores)
-
-      assert_raise PlugError, fn ->
-        Expected.list_user_logins("user")
-      end
-    end
   end
 
   describe "delete_login/2" do
@@ -71,14 +61,6 @@ defmodule ExpectedTest do
     test "does nothing if the login does not exist" do
       assert :ok = Expected.delete_login("false_user", "bad_serial")
     end
-
-    test "raises an exception if Expected has not been plugged" do
-      Application.delete_env(:expected, :stores)
-
-      assert_raise PlugError, fn ->
-        Expected.delete_login("user", "serial")
-      end
-    end
   end
 
   describe "delete_all_user_logins/1" do
@@ -96,14 +78,6 @@ defmodule ExpectedTest do
 
     test "does nothing if the user has no login in the store" do
       assert :ok = Expected.delete_all_user_logins("false_user")
-    end
-
-    test "raises an exception if Expected has not been plugged" do
-      Application.delete_env(:expected, :stores)
-
-      assert_raise PlugError, fn ->
-        Expected.delete_all_user_logins("user")
-      end
     end
   end
 
@@ -127,14 +101,6 @@ defmodule ExpectedTest do
 
       assert :ok = Expected.clean_old_logins("user")
       assert Expected.list_user_logins("user") == [@login]
-    end
-
-    test "raises an exception if Expected has not been plugged" do
-      Application.delete_env(:expected, :stores)
-
-      assert_raise PlugError, fn ->
-        Expected.clean_old_logins("user")
-      end
     end
   end
 
@@ -184,20 +150,6 @@ defmodule ExpectedTest do
 
     test "gets the session_cookie from the application environment" do
       assert %{session_cookie: @session_cookie} = Expected.init([])
-    end
-
-    test "puts stores configuration in the application environment" do
-      Expected.init([])
-
-      assert {:ok, stores} = Application.fetch_env(:expected, :stores)
-      assert stores.store == Expected.MemoryStore
-      assert stores.store_opts == @server
-
-      assert %{
-               store: Plug.Session.ETS,
-               key: @session_cookie,
-               store_config: @ets_table
-             } = stores.session_opts
     end
 
     ## Problems

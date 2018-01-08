@@ -25,6 +25,7 @@ defmodule Expected.Mixfile do
 
   def application do
     [
+      mod: {Expected, []},
       extra_applications: [:logger]
     ]
   end
