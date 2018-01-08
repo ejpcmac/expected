@@ -562,4 +562,90 @@ defmodule Expected.PlugsTest do
       end
     end
   end
+
+  describe "logout/2" do
+    setup [:with_login]
+
+    ## Standard cases
+
+    test "deletes the login if there is a valid auth_cookie", %{conn: conn} do
+      conn
+      |> put_req_cookie(@auth_cookie, @auth_cookie_content)
+      |> fetch_session()
+      |> logout()
+
+      assert MemoryStore.list_user_logins("user", @server) == []
+    end
+
+    test "deletes the session if there is valid auth_cookie", %{conn: conn} do
+      Plug.Session.ETS.put(nil, "sid", %{"a" => "b"}, @ets_table)
+
+      conn
+      |> put_req_cookie(@auth_cookie, @auth_cookie_content)
+      |> fetch_session()
+      |> logout()
+
+      assert Plug.Session.ETS.get(nil, "sid", @ets_table) == {nil, %{}}
+    end
+
+    test "deletes the auth cookie", %{conn: conn} do
+      conn =
+        conn
+        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
+        |> fetch_session()
+        |> logout()
+        |> send_resp(:ok, "")
+
+      assert conn.cookies[@auth_cookie] == nil
+    end
+
+    test "deletes the session cookie", %{conn: conn} do
+      conn =
+        conn
+        |> put_req_cookie(@session_cookie, "sid")
+        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
+        |> fetch_session()
+        |> logout()
+        |> send_resp(:ok, "")
+
+      assert conn.cookies[@session_cookie] == nil
+    end
+
+    ## Problems
+
+    test "deletes the auth_cookie if it is invalid", %{conn: conn} do
+      conn =
+        conn
+        |> put_req_cookie(@auth_cookie, "something")
+        |> fetch_session()
+        |> logout()
+        |> send_resp(:ok, "")
+
+      assert conn.cookies[@auth_cookie] == nil
+    end
+
+    test "deletes the auth_cookie if it does not reference a valid login", %{
+      conn: conn
+    } do
+      conn =
+        conn
+        |> put_req_cookie(@auth_cookie, "some_user.some_serial.some_token")
+        |> fetch_session()
+        |> logout()
+        |> send_resp(:ok, "")
+
+      assert conn.cookies[@auth_cookie] == nil
+    end
+
+    test "raises an exception if `Expected` has not been plugged" do
+      assert_raise PlugError, fn ->
+        :get
+        |> conn("/")
+        |> Plug.Session.call(Plug.Session.init(@session_opts))
+        |> fetch_session()
+        |> logout()
+        |> send_resp(:ok, "")
+      end
+    end
+  end
 end

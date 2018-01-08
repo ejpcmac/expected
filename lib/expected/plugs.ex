@@ -18,7 +18,7 @@ defmodule Expected.Plugs do
         table: :logins,
         auth_cookie: "_my_app_auth",
         session_store: PlugSessionMnesia.Store,  # For instance.
-        session_cookie: "_my_app_key",   # The Plug.Session `:key` option.
+        session_cookie: "_my_app_key"  # The Plug.Session `:key` option.
 
   For the login registration to work, Expected needs to get the session ID from
   the session cookie. **You must use a session store that stores the session
@@ -94,6 +94,31 @@ defmodule Expected.Plugs do
       |> Map.put(:action, :register_login)
 
     put_private(conn, :expected, expected)
+  end
+
+  @doc """
+  Logs a user out.
+
+  This plug deletes the login and its associated session from the stores and
+  their cookies. If there is no authentication cookie, it does nothing.
+  """
+  @spec logout(Plug.Conn.t()) :: Plug.Conn.t()
+  @spec logout(Plug.Conn.t(), keyword()) :: Plug.Conn.t()
+  def logout(conn, _opts \\ []) do
+    expected = fetch_expected!(conn)
+    auth_cookie = conn.cookies[expected.auth_cookie]
+
+    case parse_auth_cookie(auth_cookie) do
+      {:ok, user, serial, _token} ->
+        Expected.delete_login(user, serial)
+
+        conn
+        |> delete_resp_cookie(expected.session_cookie)
+        |> delete_resp_cookie(expected.auth_cookie)
+
+      _ ->
+        delete_resp_cookie(conn, expected.auth_cookie)
+    end
   end
 
   @doc """

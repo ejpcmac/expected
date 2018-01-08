@@ -21,7 +21,7 @@ defmodule Expected do
         table: :logins,
         auth_cookie: "_my_app_auth",
         session_store: PlugSessionMnesia.Store,
-        session_cookie: "_my_app_key",
+        session_cookie: "_my_app_key"
 
   The mandatory fields are the following:
 
@@ -205,6 +205,22 @@ defmodule Expected do
   authentication attempt if there has been an unexpected token with
   `Expected.unexpected_token?/1`. It’s up to you to choose wether you should
   show an alert to the user. Do not forget to state it can be due to case (1).
+
+  ## Logout
+
+  To log a user out, simply call `Expected.Plugs.logout/2` on the connection. It
+  will delete the login and its associated session from the stores and their
+  cookies. For instance, you can imagine the following action for your session
+  controller:
+
+      import Expected.Plugs, only: [logout: 1]
+
+      @spec delete(Plug.Conn.t, map) :: Plug.Conn.t
+      def delete(conn, _params) do
+        conn
+        |> logout()
+        |> redirect(to: "/")
+      end
   """
 
   import Plug.Conn,
