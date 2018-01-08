@@ -226,6 +226,7 @@ defmodule Expected do
   @behaviour Plug
 
   use Application
+  use ExportPrivate
 
   import Plug.Conn,
     only: [
@@ -255,7 +256,7 @@ defmodule Expected do
   """
   @spec list_user_logins(String.t()) :: [Login.t()]
   def list_user_logins(username) do
-    %{store: store, store_opts: store_opts} = config().stores()
+    %{store: store, store_opts: store_opts} = config_module().get()
     store.list_user_logins(username, store_opts)
   end
 
@@ -268,7 +269,7 @@ defmodule Expected do
       store: store,
       store_opts: store_opts,
       session_opts: %{store: session_store, store_config: session_config}
-    } = config().stores()
+    } = config_module().get()
 
     case store.get(username, serial, store_opts) do
       {:ok, login} ->
@@ -298,7 +299,7 @@ defmodule Expected do
   """
   @spec clean_old_logins(String.t()) :: :ok
   def clean_old_logins(username) do
-    %{store: store, store_opts: store_opts} = config().stores()
+    %{store: store, store_opts: store_opts} = config_module().get()
 
     cookie_max_age =
       Application.get_env(:expected, :cookie_max_age, @cookie_max_age)
@@ -315,8 +316,8 @@ defmodule Expected do
 
   # Define a private function to avoid unavailable module warnings on
   # compilation.
-  @spec config :: module()
-  defp config, do: Expected.Config
+  @spec config_module :: module()
+  defp config_module, do: Expected.Config
 
   #########################
   # Application functions #
@@ -335,19 +336,13 @@ defmodule Expected do
   # constants.
   @spec compile_config_module :: :ok
   defp compile_config_module do
-    expected = init([])
-
-    stores = %{
-      store: expected.store,
-      store_opts: expected.store_opts,
-      session_opts: expected.session_opts
-    }
+    expected = init_config()
 
     config_module =
       quote do
         # credo:disable-for-next-line
         defmodule Expected.Config do
-          def stores, do: unquote(Macro.escape(stores))
+          def get, do: unquote(Macro.escape(expected))
         end
       end
 
@@ -355,15 +350,11 @@ defmodule Expected do
     :ok
   end
 
-  ##################
-  # Plug functions #
-  ##################
-
-  @impl Plug
-  def init(_opts) do
+  @spec init_config :: map()
+  defp init_config do
     %{}
     |> init_store()
-    |> init_config()
+    |> put_config()
     |> init_session()
   end
 
@@ -381,8 +372,8 @@ defmodule Expected do
     |> Map.put(:store_opts, store_opts)
   end
 
-  @spec init_config(map()) :: map()
-  defp init_config(expected) do
+  @spec put_config(map()) :: map()
+  defp put_config(expected) do
     expected
     |> Map.put(:auth_cookie, fetch_auth_cookie_name!())
   end
@@ -441,12 +432,21 @@ defmodule Expected do
     end
   end
 
+  ##################
+  # Plug functions #
+  ##################
+
   @impl Plug
-  def call(conn, opts) do
+  def init(_opts), do: nil
+
+  @impl Plug
+  def call(conn, _opts) do
+    expected = config_module().get()
+
     conn
-    |> put_private(:expected, opts)
+    |> put_private(:expected, expected)
     |> register_before_send(&before_send(&1))
-    |> Plug.Session.call(opts.session_opts)
+    |> Plug.Session.call(expected.session_opts)
   end
 
   @spec before_send(Plug.Conn.t(), keyword()) :: Plug.Conn.t()

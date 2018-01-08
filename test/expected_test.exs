@@ -104,39 +104,39 @@ defmodule ExpectedTest do
     end
   end
 
-  ##################
-  # Plug functions #
-  ##################
+  #########################
+  # Application functions #
+  #########################
 
-  describe "init/1" do
+  describe "init_config/0" do
     ## Standard cases
 
     test "gets the store module from the application environment" do
-      assert %{store: Expected.MemoryStore} = Expected.init([])
+      assert %{store: Expected.MemoryStore} = Expected.init_config()
     end
 
     test "converts the :memory store to Expected.MemoryStore" do
       Application.put_env(:expected, :store, :memory)
-      assert %{store: Expected.MemoryStore} = Expected.init([])
+      assert %{store: Expected.MemoryStore} = Expected.init_config()
     end
 
     test "converts the :mnesia store to Expected.MnesiaStore" do
       Application.put_env(:expected, :store, :mnesia)
       Application.put_env(:expected, :table, :logins)
-      assert %{store: Expected.MnesiaStore} = Expected.init([])
+      assert %{store: Expected.MnesiaStore} = Expected.init_config()
     end
 
     test "keeps unknown store as is" do
       Application.put_env(:expected, :store, Expected.MemoryStore)
-      assert %{store: Expected.MemoryStore} = Expected.init([])
+      assert %{store: Expected.MemoryStore} = Expected.init_config()
     end
 
     test "gets the store configuration from the application environment" do
-      assert %{store_opts: @server} = Expected.init([])
+      assert %{store_opts: @server} = Expected.init_config()
     end
 
     test "gets the auth_cookie from the application environment" do
-      assert %{auth_cookie: @auth_cookie} = Expected.init([])
+      assert %{auth_cookie: @auth_cookie} = Expected.init_config()
     end
 
     test "initialises the session" do
@@ -145,11 +145,11 @@ defmodule ExpectedTest do
                  key: @session_cookie,
                  store_config: @ets_table
                }
-             } = Expected.init([])
+             } = Expected.init_config()
     end
 
     test "gets the session_cookie from the application environment" do
-      assert %{session_cookie: @session_cookie} = Expected.init([])
+      assert %{session_cookie: @session_cookie} = Expected.init_config()
     end
 
     ## Problems
@@ -159,7 +159,7 @@ defmodule ExpectedTest do
 
       assert_raise ConfigurationError,
                    ConfigurationError.message(%{reason: :no_store}),
-                   fn -> Expected.init([]) end
+                   fn -> Expected.init_config() end
     end
 
     test "raises an exception if the authentication cookie is not configured" do
@@ -167,7 +167,7 @@ defmodule ExpectedTest do
 
       assert_raise ConfigurationError,
                    ConfigurationError.message(%{reason: :no_auth_cookie}),
-                   fn -> Expected.init([]) end
+                   fn -> Expected.init_config() end
     end
 
     test "raises an exception if the session store is not configured" do
@@ -175,7 +175,7 @@ defmodule ExpectedTest do
 
       assert_raise ConfigurationError,
                    ConfigurationError.message(%{reason: :no_session_store}),
-                   fn -> Expected.init([]) end
+                   fn -> Expected.init_config() end
     end
 
     test "raises an exception if the session cookie is not configured" do
@@ -183,7 +183,7 @@ defmodule ExpectedTest do
 
       assert_raise ConfigurationError,
                    ConfigurationError.message(%{reason: :no_session_cookie}),
-                   fn -> Expected.init([]) end
+                   fn -> Expected.init_config() end
     end
   end
 end
