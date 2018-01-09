@@ -299,18 +299,17 @@ defmodule Expected do
   """
   @spec clean_old_logins(String.t()) :: :ok
   def clean_old_logins(username) do
-    %{store: store, store_opts: store_opts} = config_module().get()
-
     cookie_max_age =
       Application.get_env(:expected, :cookie_max_age, @cookie_max_age)
 
     max_age = System.convert_time_unit(cookie_max_age, :seconds, :native)
     oldest_valid_login = System.os_time() - max_age
-    logins = store.list_user_logins(username, store_opts)
 
-    Enum.each(logins, fn login ->
+    username
+    |> list_user_logins()
+    |> Enum.each(fn login ->
       if login.last_login < oldest_valid_login,
-        do: store.delete(login.username, login.serial, store_opts)
+        do: delete_login(username, login.serial)
     end)
   end
 
