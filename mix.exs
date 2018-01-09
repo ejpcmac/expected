@@ -42,6 +42,7 @@ defmodule Expected.Mixfile do
       {:excoveralls, ">= 0.0.0", only: :test, runtime: false},
       {:mix_test_watch, ">= 0.0.0", only: :dev, runtime: false},
       {:ex_unit_notifier, ">= 0.0.0", only: :test, runtime: false},
+      {:export_private, ">= 0.0.0", runtime: false},
 
       # Project dependencies
       {:plug, "~> 1.4"},
