@@ -192,8 +192,10 @@ defmodule Expected.MnesiaStoreError do
     Please ensure it has the following format:
 
         {
+          user_serial :: String.t(),
           username :: String.t(),
-          logins :: %{required(String.t()) => Expected.Login.t()}
+          login :: Expected.Login.t(),
+          last_login :: integer()
         }
     """
   end

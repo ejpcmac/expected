@@ -13,7 +13,7 @@ defmodule Expected.MnesiaStore.Helpers do
   @typep persistence() :: :persistent | :volatile
   @typep return_value() :: :ok | {:error | :abort, term()}
 
-  @attributes [:username, :logins]
+  @attributes [:user_serial, :username, :login, :last_login]
 
   @doc """
   Sets up the Mnesia table for login storage according to the configuration.

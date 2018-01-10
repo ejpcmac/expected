@@ -102,7 +102,10 @@ defmodule Expected.Store.Test do
           opts: opts
         } do
           assert :ok = put(@login2, opts)
-          assert list_user_logins("user", opts) == [@login1, @login2]
+          user_logins = list_user_logins("user", opts)
+
+          assert @login1 in user_logins
+          assert @login2 in user_logins
         end
 
         test "creates a new entry if there is none for the given username", %{

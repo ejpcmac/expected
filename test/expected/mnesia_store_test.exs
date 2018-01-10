@@ -6,6 +6,7 @@ defmodule Expected.MnesiaStoreTest do
   alias Expected.MnesiaStoreError
 
   @table :logins_test
+  @attributes [:user_serial, :username, :login, :last_login]
 
   # Must be defined for Expected.Store.Test to work.
   defp init_store(_) do
@@ -13,10 +14,13 @@ defmodule Expected.MnesiaStoreTest do
     File.rm_rf("Mnesia.nonode@nohost")
 
     :mnesia.start()
-    :mnesia.create_table(@table, attributes: [:username, :logins])
+    :mnesia.create_table(@table, attributes: @attributes)
 
-    user_logins = %{@login1.serial => @login1}
-    :mnesia.dirty_write({@table, @login1.username, user_logins})
+    user_serial = "#{@login1.username}.#{@login1.serial}"
+    username = @login1.username
+    last_login = @login1.last_login
+
+    :mnesia.dirty_write({@table, user_serial, username, @login1, last_login})
 
     on_exit fn -> :mnesia.stop() end
 

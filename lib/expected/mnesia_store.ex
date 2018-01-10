@@ -27,8 +27,10 @@ defmodule Expected.MnesiaStore do
   Stored entries use the following format:
 
       {
+        user_serial :: String.t(),
         username :: String.t(),
-        logins :: %{required(String.t()) => Expected.Login.t()}
+        login :: Expected.Login.t(),
+        last_login :: integer()
       }
   """
 
@@ -48,67 +50,48 @@ defmodule Expected.MnesiaStore do
 
   @impl true
   def list_user_logins(username, table) do
-    case lookup_user_logins!(username, table) do
-      [{^table, ^username, %{} = user_logins}] -> Map.values(user_logins)
-      [] -> []
-    end
-  end
-
-  @impl true
-  def get(username, serial, table) do
-    case lookup_user_logins!(username, table) do
-      [{^table, ^username, %{^serial => login}}] -> {:ok, login}
-      _ -> {:error, :no_login}
-    end
-  end
-
-  @impl true
-  def put(%Login{username: username, serial: serial} = login, table) do
-    case lookup_user_logins!(username, table) do
-      [{^table, ^username, %{} = user_logins}] ->
-        user_logins
-        |> Map.put(serial, login)
-        |> put_user_logins!(username, table)
-
-      [] ->
-        put_user_logins!(%{serial => login}, username, table)
-    end
-  end
-
-  @impl true
-  def delete(username, serial, table) do
-    case lookup_user_logins!(username, table) do
-      [{^table, ^username, %{} = user_logins}] ->
-        user_logins
-        |> Map.delete(serial)
-        |> put_user_logins!(username, table)
-
-      [] ->
-        :ok
-    end
-  end
-
-  @spec lookup_user_logins!(String.t(), atom()) :: [{atom(), String.t(), map}]
-  defp lookup_user_logins!(username, table) do
     t = fn ->
-      :mnesia.read({table, username})
+      :mnesia.match_object({table, :_, username, :_, :_})
     end
 
     case :mnesia.transaction(t) do
       {:atomic, user_logins} ->
-        user_logins
+        Enum.map(user_logins, fn {_, _, _, login, _} -> login end)
 
       {:aborted, {:no_exists, _}} ->
         raise MnesiaStoreError, reason: :table_not_exists
     end
   end
 
-  @spec put_user_logins!(map(), String.t(), atom()) :: :ok
-  defp put_user_logins!(user_logins, username, table) do
-    t =
-      if Enum.empty?(user_logins),
-        do: fn -> :mnesia.delete({table, username}) end,
-        else: fn -> :mnesia.write({table, username, user_logins}) end
+  @impl true
+  def get(username, serial, table) do
+    t = fn ->
+      :mnesia.read({table, "#{username}.#{serial}"})
+    end
+
+    case :mnesia.transaction(t) do
+      {:atomic, [{_, _, _, login, _}]} ->
+        {:ok, login}
+
+      {:atomic, []} ->
+        {:error, :no_login}
+
+      {:aborted, {:no_exists, _}} ->
+        raise MnesiaStoreError, reason: :table_not_exists
+    end
+  end
+
+  @impl true
+  def put(
+        %Login{username: username, serial: serial, last_login: last_login} =
+          login,
+        table
+      ) do
+    user_serial = "#{username}.#{serial}"
+
+    t = fn ->
+      :mnesia.write({table, user_serial, username, login, last_login})
+    end
 
     case :mnesia.transaction(t) do
       {:atomic, _} ->
@@ -119,6 +102,21 @@ defmodule Expected.MnesiaStore do
 
       {:aborted, {:bad_type, _}} ->
         raise MnesiaStoreError, reason: :invalid_table_format
+    end
+  end
+
+  @impl true
+  def delete(username, serial, table) do
+    t = fn ->
+      :mnesia.delete({table, "#{username}.#{serial}"})
+    end
+
+    case :mnesia.transaction(t) do
+      {:atomic, _} ->
+        :ok
+
+      {:aborted, {:no_exists, _}} ->
+        raise MnesiaStoreError, reason: :table_not_exists
     end
   end
 end

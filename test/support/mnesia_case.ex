@@ -11,7 +11,7 @@ defmodule Expected.MnesiaCase do
       alias Expected.MnesiaTableExistsError
 
       @table :logins_test
-      @attributes [:username, :logins]
+      @attributes [:user_serial, :username, :login, :last_login]
 
       setup do
         Application.put_env(:expected, :table, @table)

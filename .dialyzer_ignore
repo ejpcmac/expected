@@ -6,6 +6,7 @@
 :0: Unknown function mnesia:table_info/2
 :0: Unknown function mnesia:transaction/1
 :0: Unknown function mnesia:write/1
+:0: Unknown function mnesia:match_object/1
 :0: Unknown function 'Elixir.Mix':env/0
 :0: Unknown function 'Elixir.Mix':shell/0
 lib/mix/tasks/expected.mnesia.setup.ex:1: Callback info about the 'Elixir.Mix.Task' behaviour is not available
