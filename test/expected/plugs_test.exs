@@ -322,23 +322,6 @@ defmodule Expected.PlugsTest do
       assert sid1 != sid2
     end
 
-    test "cleans old user’s logins when authenticating from an auth_cookie", %{
-      conn: conn
-    } do
-      :ok = MemoryStore.put(@old_login, @server)
-
-      logins = MemoryStore.list_user_logins("user", @server)
-      assert length(logins) == 2
-
-      conn
-      |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-      |> fetch_session()
-      |> authenticate()
-
-      logins = MemoryStore.list_user_logins("user", @server)
-      assert length(logins) == 1
-    end
-
     test "does nothing if the session is not authenticated and there is no
           auth_cookie", %{conn: conn} do
       conn =

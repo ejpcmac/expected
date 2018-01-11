@@ -239,8 +239,6 @@ defmodule Expected do
   alias Expected.Login
   alias Expected.ConfigurationError
 
-  @cookie_max_age 7_776_000
-
   #################
   # API functions #
   #################
@@ -292,25 +290,18 @@ defmodule Expected do
   end
 
   @doc """
-  Cleans the old logins for the given `username`.
-
-  This functions uses the `cookie_max_age` option set globally. It defaults to
-  three months.
+  Deletes the logins older than `max_age` for the given.
   """
-  @spec clean_old_logins(String.t()) :: :ok
-  def clean_old_logins(username) do
-    cookie_max_age =
-      Application.get_env(:expected, :cookie_max_age, @cookie_max_age)
+  @spec clean_old_logins(integer()) :: :ok
+  def clean_old_logins(max_age) do
+    %{
+      store: store,
+      store_opts: store_opts,
+      session_opts: %{store: session_store, store_config: session_config}
+    } = config_module().get()
 
-    max_age = System.convert_time_unit(cookie_max_age, :seconds, :native)
-    oldest_valid_login = System.os_time() - max_age
-
-    username
-    |> list_user_logins()
-    |> Enum.each(fn login ->
-      if login.last_login < oldest_valid_login,
-        do: delete_login(username, login.serial)
-    end)
+    store.clean_old_logins(max_age, store_opts)
+    |> Enum.each(&session_store.delete(nil, &1.sid, session_config))
   end
 
   # Define a private function to avoid unavailable module warnings on

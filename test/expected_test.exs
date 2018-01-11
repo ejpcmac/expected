@@ -84,32 +84,19 @@ defmodule ExpectedTest do
   describe "clean_old_logins/1" do
     setup [:with_login]
 
-    test "cleans old logins for a given user" do
+    test "deletes the logins older than max_age" do
       :ok = MemoryStore.put(@old_login, @server)
-      :ok = MemoryStore.put(@not_so_old_login, @server)
 
-      assert :ok = Expected.clean_old_logins("user")
-      assert Expected.list_user_logins("user") == [@login, @not_so_old_login]
+      assert :ok = Expected.clean_old_logins(@three_months)
+      assert MemoryStore.list_user_logins("user", @server) == [@login]
     end
 
     test "cleans the sessions associated with the old logins" do
       Plug.Session.ETS.put(nil, "sid2", %{"a" => "b"}, @ets_table)
       :ok = MemoryStore.put(@old_login, @server)
-      :ok = MemoryStore.put(@not_so_old_login, @server)
 
-      assert :ok = Expected.clean_old_logins("user")
+      assert :ok = Expected.clean_old_logins(@three_months)
       assert Plug.Session.ETS.get(nil, "sid2", @ets_table) == {nil, %{}}
-    end
-
-    test "gets the authentication cookie max age from the application
-          environment" do
-      Application.put_env(:expected, :cookie_max_age, 10)
-
-      :ok = MemoryStore.put(@old_login, @server)
-      :ok = MemoryStore.put(@not_so_old_login, @server)
-
-      assert :ok = Expected.clean_old_logins("user")
-      assert Expected.list_user_logins("user") == [@login]
     end
   end
 
