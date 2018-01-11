@@ -51,4 +51,13 @@ defmodule Expected.Store do
               serial :: String.t(),
               opts :: term()
             ) :: :ok
+
+  @doc """
+  Cleans all the logins that have not been used for more than `max_age`.
+
+  This callback must compare with the `:last_login` field, not `:created_at`.
+  """
+  @callback clean_old_logins(max_age :: integer(), opts :: term()) :: [
+              Login.t()
+            ]
 end

@@ -5,6 +5,8 @@ defmodule Expected.MemoryStore.Server do
 
   use GenServer
 
+  alias Expected.Login
+
   @impl true
   def init(state) do
     {:ok, state}
@@ -55,4 +57,38 @@ defmodule Expected.MemoryStore.Server do
 
     {:reply, :ok, state}
   end
+
+  @impl true
+  def handle_call({:clean_old_logins, max_age}, _from, state) do
+    native_max_age = System.convert_time_unit(max_age, :seconds, :native)
+    oldest_timestamp = System.os_time() - native_max_age
+
+    {state, deleted_logins} = clean_old_logins(state, oldest_timestamp)
+
+    {:reply, deleted_logins, state}
+  end
+
+  @spec clean_old_logins(map(), integer()) :: {map(), [Login.t()]}
+  defp clean_old_logins(logins, oldest_timestamp) do
+    logins
+    |> Enum.map_reduce([], fn {username, user_logins}, deleted_logins ->
+      {keeped, deleted} = clean_old_user_logins(user_logins, oldest_timestamp)
+      {{username, keeped}, deleted ++ deleted_logins}
+    end)
+    |> first_into_map()
+  end
+
+  @spec clean_old_user_logins(map(), integer()) :: {map(), [Login.t()]}
+  defp clean_old_user_logins(user_logins, oldest_timestamp) do
+    user_logins
+    |> Enum.reduce({[], []}, fn {serial, login}, {keeped, deleted} ->
+      if login.last_login >= oldest_timestamp,
+        do: {[{serial, login} | keeped], deleted},
+        else: {keeped, [login | deleted]}
+    end)
+    |> first_into_map()
+  end
+
+  @spec first_into_map({list(), list()}) :: {map(), list()}
+  defp first_into_map({map, list}), do: {Enum.into(map, %{}), list}
 end

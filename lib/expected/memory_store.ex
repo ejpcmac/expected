@@ -68,4 +68,9 @@ defmodule Expected.MemoryStore do
   def delete(username, serial, server) do
     GenServer.call(server, {:delete, username, serial})
   end
+
+  @impl true
+  def clean_old_logins(max_age, server) do
+    GenServer.call(server, {:clean_old_logins, max_age})
+  end
 end

@@ -41,6 +41,9 @@ defmodule Expected.Store.Test do
       alias Expected.Login
 
       @now System.os_time()
+      @three_months 7_776_000
+      @four_months System.convert_time_unit(10_368_000, :seconds, :native)
+      @four_months_ago @now - @four_months
 
       @login1 %Login{
         username: "user",
@@ -55,6 +58,7 @@ defmodule Expected.Store.Test do
 
       @login2 %{@login1 | serial: "2", token: "token2", sid: "sid2"}
       @login3 %{@login1 | username: "user2", token: "token3", sid: "sid3"}
+      @old_login %{@login2 | last_login: @four_months_ago}
 
       @logins %{
         "user" => %{
@@ -137,6 +141,23 @@ defmodule Expected.Store.Test do
           opts: opts
         } do
           assert :ok = delete("test", "1", opts)
+        end
+      end
+
+      describe "clean_old_logins/2" do
+        setup [:init_store]
+
+        test "deletes old logins from the store", %{opts: opts} do
+          :ok = put(@old_login, opts)
+          clean_old_logins(@three_months, opts)
+
+          assert {:ok, @login1} = get("user", "1", opts)
+          assert {:error, :no_login} = get("user", "2", opts)
+        end
+
+        test "returns the list of deleted logins", %{opts: opts} do
+          :ok = put(@old_login, opts)
+          assert clean_old_logins(@three_months, opts) == [@old_login]
         end
       end
     end

@@ -119,4 +119,34 @@ defmodule Expected.MnesiaStore do
         raise MnesiaStoreError, reason: :table_not_exists
     end
   end
+
+  @impl true
+  def clean_old_logins(max_age, table) do
+    native_max_age = System.convert_time_unit(max_age, :seconds, :native)
+    oldest_timestamp = System.os_time() - native_max_age
+
+    t = fn ->
+      old_logins =
+        :mnesia.select(table, [
+          {
+            {table, :"$1", :_, :"$3", :"$4"},
+            [{:<, :"$4", oldest_timestamp}],
+            [{{:"$1", :"$3"}}]
+          }
+        ])
+
+      for {user_serial, login} <- old_logins do
+        :mnesia.delete({table, user_serial})
+        login
+      end
+    end
+
+    case :mnesia.transaction(t) do
+      {:atomic, deleted_logins} ->
+        deleted_logins
+
+      {:aborted, {:no_exists, _}} ->
+        raise MnesiaStoreError, reason: :table_not_exists
+    end
+  end
 end
