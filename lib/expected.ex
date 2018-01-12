@@ -236,6 +236,7 @@ defmodule Expected do
       register_before_send: 2
     ]
 
+  alias Expected.Cleaner
   alias Expected.Login
   alias Expected.ConfigurationError
 
@@ -300,7 +301,8 @@ defmodule Expected do
       session_opts: %{store: session_store, store_config: session_config}
     } = config_module().get()
 
-    store.clean_old_logins(max_age, store_opts)
+    max_age
+    |> store.clean_old_logins(store_opts)
     |> Enum.each(&session_store.delete(nil, &1.sid, session_config))
   end
 
@@ -317,8 +319,11 @@ defmodule Expected do
   def start(_type, _args) do
     compile_config_module()
 
-    # Return self() as PID as we don’t need a supervision tree for now.
-    {:ok, self()}
+    Supervisor.start_link(
+      [Cleaner],
+      strategy: :one_for_one,
+      name: Expected.Supervisor
+    )
   end
 
   # Compiles the `Expected.Config` module using values fetched from the
