@@ -32,7 +32,45 @@ defmodule Expected.MnesiaStore.HelpersTest do
     end
   end
 
-  describe "setup/3" do
+  describe "clear!/0" do
+    test "clears all logins from the store accorting to the configuration" do
+      :mnesia.create_table(@table, attributes: [:key, :value])
+
+      record = {@table, :test, :test}
+      :mnesia.dirty_write(record)
+
+      assert :mnesia.dirty_match_object({@table, :_, :_}) == [record]
+      assert :ok = Helpers.clear!()
+      assert :mnesia.dirty_match_object({@table, :_, :_}) == []
+    end
+
+    test "raises if the table name is not provided in the configuration" do
+      Application.delete_env(:expected, :table)
+
+      assert_raise ConfigurationError,
+                   ConfigurationError.message(%{reason: :no_mnesia_table}),
+                   fn -> Helpers.clear!() end
+    end
+  end
+
+  describe "drop!/0" do
+    test "drops the given Mnesia table" do
+      :mnesia.create_table(@table, attributes: @attributes)
+
+      assert :ok = Helpers.drop!()
+      assert {:aborted, {:no_exists, @table}} = :mnesia.delete_table(@table)
+    end
+
+    test "raises if the table name is not provided in the configuration" do
+      Application.delete_env(:expected, :table)
+
+      assert_raise ConfigurationError,
+                   ConfigurationError.message(%{reason: :no_mnesia_table}),
+                   fn -> Helpers.drop!() end
+    end
+  end
+
+  describe "setup/2" do
     test "creates a Mnesia schema and table and returns :ok if it’s all good" do
       assert :ok = Helpers.setup(@table)
       assert {:aborted, {:already_exists, _}} = :mnesia.create_table(@table, [])
@@ -66,6 +104,36 @@ defmodule Expected.MnesiaStore.HelpersTest do
     test "returns {:error | :aborted, reason} if an error occured" do
       :mnesia.create_table(@table, [])
       assert {:error, _} = Helpers.setup(@table)
+    end
+  end
+
+  describe "clear/1" do
+    test "clears all logins from the given table" do
+      :mnesia.create_table(@table, attributes: [:key, :value])
+
+      record = {@table, :test, :test}
+      :mnesia.dirty_write(record)
+
+      assert :mnesia.dirty_match_object({@table, :_, :_}) == [record]
+      assert :ok = Helpers.clear(@table)
+      assert :mnesia.dirty_match_object({@table, :_, :_}) == []
+    end
+
+    test "works as well if the table does not exist" do
+      assert :ok = Helpers.clear(@table)
+    end
+  end
+
+  describe "drop/1" do
+    test "drops the given Mnesia table" do
+      :mnesia.create_table(@table, attributes: @attributes)
+
+      assert :ok = Helpers.drop(@table)
+      assert {:aborted, {:no_exists, @table}} = :mnesia.delete_table(@table)
+    end
+
+    test "works as well if the given table does not exist" do
+      assert :ok = Helpers.drop(@table)
     end
   end
 end

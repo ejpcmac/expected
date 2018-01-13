@@ -15,15 +15,19 @@ defmodule Expected.MnesiaStore.Helpers do
 
   @attributes [:user_serial, :username, :login, :last_login]
 
-  @doc """
-  Sets up the Mnesia table for login storage according to the configuration.
-
+  table_config = """
   For this function to work, `:table` must be set in your `config.exs`:
 
       config :expected,
         store: :mnesia,
         table: :logins,
         ...
+  """
+
+  @doc """
+  Sets up the Mnesia table for login storage according to the configuration.
+
+  #{table_config}
 
   It then creates a Mnesia table with copies in RAM and on disk, so that logins
   are persistent accross application reboots. For more information about the
@@ -35,6 +39,26 @@ defmodule Expected.MnesiaStore.Helpers do
   @spec setup! :: :ok
   def setup! do
     fetch_table_name!() |> do_setup!()
+  end
+
+  @doc """
+  Clears all logins from the Mnesia table given in the configuration.
+
+  #{table_config}
+  """
+  @spec clear! :: :ok
+  def clear! do
+    fetch_table_name!() |> clear()
+  end
+
+  @doc """
+  Drops the Mnesia table given in the configuration.
+
+  #{table_config}
+  """
+  @spec drop! :: :ok
+  def drop! do
+    fetch_table_name!() |> drop()
   end
 
   @doc """
@@ -66,14 +90,30 @@ defmodule Expected.MnesiaStore.Helpers do
       {:error, already_exists}
   """
   @spec setup(atom()) :: return_value()
-  @spec setup(atom(), :persistent | :volatile) ::
-          :ok | {:error | :abort, term()}
-
+  @spec setup(atom(), :persistent | :volatile) :: return_value()
   def setup(table, persistent? \\ :persistent)
       when is_atom(table) and persistent? in [:persistent, :volatile] do
     {:mnesia.start(), persistent?}
     |> create_schema()
     |> create_table(table)
+  end
+
+  @doc """
+  Clears all logins from the `table`.
+  """
+  @spec clear(atom()) :: :ok
+  def clear(table) do
+    :mnesia.clear_table(table)
+    :ok
+  end
+
+  @doc """
+  Drops the Mnesia `table`.
+  """
+  @spec drop(atom()) :: :ok
+  def drop(table) do
+    :mnesia.delete_table(table)
+    :ok
   end
 
   ##
