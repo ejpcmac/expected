@@ -28,8 +28,8 @@ defmodule Expected.Store.Test do
 
   With this minimal code, the behaviours of the implementations for
   `c:Expected.Store.list_user_logins/2`, `c:Expected.Store.get/3`,
-  `c:Expected.Store.put/2` and `c:Expected.Store.delete/3` are automatically
-  tested.
+  `c:Expected.Store.put/2`, `c:Expected.Store.delete/3` and
+  `c:Expected.Store.clean_old_logins/2` are automatically tested.
   """
 
   defmacro __using__(opts) do

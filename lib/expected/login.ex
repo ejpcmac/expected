@@ -5,9 +5,9 @@ defmodule Expected.Login do
   ## Fields
 
     * `username` - the login username
-    * `serial` - the login serial (i.e. a kind of persistent session ID for a
+    * `serial` - the login serial (*i.e.* a kind of persistent session ID for a
                  given machine)
-    * `token` - the token for next login
+    * `token` - the token for next authentication
     * `sid` - the current session ID
     * `created_at` - the initial login timestamp
     * `last_login` - the timestamp of last login using this serial

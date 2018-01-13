@@ -3,8 +3,8 @@ defmodule Expected do
   A module for login and session management.
 
   This module enables persistent logins through a cookie, following Barry
-  Jaspan’s [Improved Persistent Login Cookie Best Practice](http://www.jaspan.com/improved_persistent_login_cookie_best_practice),
-  with the ability to list and discard sessions.
+  Jaspan’s [Improved Persistent Login Cookie Best Practice](http://www.jaspan.com/improved_persistent_login_cookie_best_practice).
+  It also provides an API to list and discard sessions.
 
   ## Setup
 
@@ -30,11 +30,19 @@ defmodule Expected do
     * `session_store` - the session store passed to `Plug.Session`
     * `session_cookie` - the `key` option for `Plug.Session`
 
+  There are also some optional fields:
+
+    * `cookie_max_age` - the authentication cookie max age is seconds (default:
+                         90 days)
+    * `cleaner_period` - the login cleaner period in seconds (default: 1 day)
+    * `session_opts` - options passed to `Plug.Session`
+    * `plug_config` - options passed to the plugs in `Expected.Plugs`
+
   #### Login store
 
   Currently, the built-in stores are `:mnesia` and `:memory`. `:memory` is for
   testing purpose only, so please use `:mnesia`. An official `:ecto` one could
-  come some day, feel free to ask me if you want it or want to implement it. You
+  come some day; feel free to ask me if you need it or plan to implement it. You
   can also implement another store using the `Expected.Store`specifications.
 
   For the `:mnesia` store, you need to add a `:table` option to set the Mnesia
@@ -48,6 +56,21 @@ defmodule Expected do
   You can also create it directly from Elixir using
   `Expected.MnesiaStore.Helpers.setup!/0`. This can be useful to include in a
   setup task to be run in a release environment.
+
+  #### Authentication cookie
+
+  The authentication cookie contains the username, a serial and a token
+  seperated by dots. The token is usable only once, and is renewed on each
+  successful authentication.
+
+  By default, the authentication cookie is valid for 90 days after the last
+  successful authentication. This can be configured using the `cookie_max_age`
+  option in the configuration.
+
+  To avoid old logins to accumulate in the store, inactive logins older than the
+  `cookie_max_age` are automatically cleaned by `Expected.Cleaner` once a day.
+  You can change this period by setting `cleaner_period` (in seconds) in the
+  application configuration.
 
   #### Session store
 
@@ -66,11 +89,12 @@ defmodule Expected do
       config :expected,
         ...
         session_store: :ets,
-        session_opts: [table: :session]
+        session_opts: [table: :session],
+        session_cookie: "_my_app_auth"
 
   * * *
 
-  You must plug `Expected` in you endpoint, and do not plug `Plug.Session`
+  You must plug `Expected` in you endpoint, and do **not** plug `Plug.Session`
   yourself:
 
       # Plug Expected
@@ -118,10 +142,10 @@ defmodule Expected do
           ...
       end
 
-  To associate the login with a user, `register_login` expects a `:current_user`
-  key featuring a `:username` field in the session. For more information and
-  configuration options, please look at `Expected.Plugs.register_login/2` in the
-  documentation.
+  To associate the login with a user, `register_login/2` expects a
+  `:current_user` key featuring a `:username` field in the session. For more
+  information and configuration options, please look at
+  `Expected.Plugs.register_login/2` in the documentation.
 
   ## Authentication
 
@@ -202,7 +226,7 @@ defmodule Expected do
 
   In the assumption we are in the case (2), all the user’s sessions are deleted
   and a flag is put in the connection assigns. You can check after an
-  authentication attempt if there has been an unexpected token with
+  authentication attempt if there has been an unexpected token using
   `Expected.unexpected_token?/1`. It’s up to you to choose wether you should
   show an alert to the user. Do not forget to state it can be due to case (1).
 
@@ -291,7 +315,7 @@ defmodule Expected do
   end
 
   @doc """
-  Deletes the logins older than `max_age` for the given.
+  Deletes all logins older than `max_age`.
   """
   @spec clean_old_logins(integer()) :: :ok
   def clean_old_logins(max_age) do

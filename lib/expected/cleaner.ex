@@ -1,6 +1,6 @@
 defmodule Expected.Cleaner do
   @moduledoc """
-  A module to automate old login cleaning.
+  A module to automate old logins cleaning.
   """
 
   use GenServer

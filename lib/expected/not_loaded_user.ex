@@ -4,7 +4,7 @@ defmodule Expected.NotLoadedUser do
 
   ## Fields
 
-    * `username` - the login username
+    * `username` - the user’s username
   """
 
   defstruct [:username]

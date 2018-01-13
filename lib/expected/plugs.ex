@@ -128,7 +128,7 @@ defmodule Expected.Plugs do
 
   This plug first checks if the session is already authenticated. It does so by
   reading the `:authenticated` field in the session. If it is `true`, it assigns
-  `:authenticated` and `:current_user` in the `conn` according to the values
+  `:authenticated` and `:current_user` in the `conn` according to their value
   in the session.
 
   The names of these fields can be changed by setting the corresponding options:
@@ -145,13 +145,13 @@ defmodule Expected.Plugs do
   ## Cookie authentication
 
   If the session is not yet authenticated, this plug checks for an
-  authentication cookie. By default, it is valid for three months after the last
+  authentication cookie. By default, it is valid for 90 days after the last
   successful authentication. You can change this in the application
   configuration:
 
       config :expected,
         ...
-        cookie_max_age: 86_400        # Set to one day, for example.
+        cookie_max_age: 86_400  # Set to one day, for example.
 
   Alternatively, you can set it locally:
 
@@ -164,8 +164,9 @@ defmodule Expected.Plugs do
 
   For security purpose, an authentication cookie can be used only once. If an
   authentication cookie is re-used, `conn.assigns.unexpected_token` is set to
-  `true` and the session is not authenticated. You can check this value and
-  accordingly inform the user of a possible malicious access.
+  `true` and the session is not authenticated. You can check this value using
+  `Expected.unexpected_token?/1` and accordingly inform the user of a possible
+  malicious access.
 
   ## User loading
 
