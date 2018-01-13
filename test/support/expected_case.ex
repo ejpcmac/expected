@@ -49,10 +49,10 @@ defmodule Expected.Case do
         Application.put_env(:expected, :session_opts, table: @ets_table)
         Application.put_env(:expected, :session_cookie, @session_cookie)
 
-        on_exit fn ->
+        on_exit(fn ->
           Application.delete_env(:expected, :stores)
           Application.delete_env(:expected, :cookie_max_age)
-        end
+        end)
       end
 
       defp setup_stores do

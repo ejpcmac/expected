@@ -27,10 +27,10 @@ defmodule Expected.PlugsTest do
       |> conn("/")
       |> Expected.call(Expected.init([]))
 
-    on_exit fn ->
+    on_exit(fn ->
       Application.delete_env(:expected, :cookie_max_age)
       Application.delete_env(:expected, :plug_config)
-    end
+    end)
 
     %{conn: conn}
   end

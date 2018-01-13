@@ -21,12 +21,12 @@ defmodule Expected.MnesiaCase do
         File.rm_rf("Mnesia.nonode@nohost")
         :mnesia.start()
 
-        on_exit fn ->
+        on_exit(fn ->
           :mnesia.stop()
           :ok = :mnesia.delete_schema([node()])
           File.rm_rf("Mnesia.nonode@nohost")
           Application.delete_env(:expected, :table)
-        end
+        end)
       end
 
       defp create_table do
