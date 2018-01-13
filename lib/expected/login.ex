@@ -15,26 +15,35 @@ defmodule Expected.Login do
     * `last_useragent` - the last user agent used to login
   """
 
-  defstruct [
-    :username,
-    :serial,
-    :token,
-    :sid,
-    :created_at,
-    :last_login,
-    :last_ip,
-    :last_useragent
-  ]
+  @fields quote(
+            do: [
+              username: String.t(),
+              serial: String.t(),
+              token: String.t(),
+              sid: String.t(),
+              created_at: integer(),
+              last_login: integer(),
+              last_ip: :inet.ip_address(),
+              last_useragent: String.t()
+            ]
+          )
+
+  @keys Keyword.keys(@fields)
+
+  defstruct @keys
 
   @typedoc "A login"
-  @type t() :: %__MODULE__{
-          username: String.t(),
-          serial: String.t(),
-          token: String.t(),
-          sid: String.t() | nil,
-          created_at: integer(),
-          last_login: integer(),
-          last_ip: :inet.ip_address(),
-          last_useragent: String.t()
-        }
+  @type t() :: %__MODULE__{unquote_splicing(@fields)}
+
+  @doc """
+  Returns the login fields list.
+  """
+  @spec fields :: keyword()
+  def fields, do: @fields
+
+  @doc """
+  Returns the login keys list.
+  """
+  @spec keys :: [atom()]
+  def keys, do: @keys
 end
