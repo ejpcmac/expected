@@ -1,35 +1,15 @@
 defmodule Expected.MnesiaStoreTest do
-  use ExUnit.Case, async: true
+  use Expected.MnesiaCase
   use Expected.Store.Test, store: Expected.MnesiaStore
 
-  alias Expected.ConfigurationError
   alias Expected.MnesiaStoreError
-
-  @table :logins_test
-  @attributes [:user_serial, :username, :login, :last_login]
 
   # Must be defined for Expected.Store.Test to work.
   defp init_store(_) do
-    # Ensure there is no previous Mnesia database on disk.
-    File.rm_rf("Mnesia.nonode@nohost")
-
-    :mnesia.start()
-    :mnesia.create_table(@table, attributes: @attributes)
-
-    user_serial = "#{@login1.username}.#{@login1.serial}"
-    username = @login1.username
-    last_login = @login1.last_login
-
-    :mnesia.dirty_write({@table, user_serial, username, @login1, last_login})
-
-    on_exit fn -> :mnesia.stop() end
+    create_table()
+    :mnesia.dirty_write(@table, from_struct(@login1))
 
     %{opts: init(table: @table)}
-  end
-
-  defp start_mnesia(_) do
-    :mnesia.start()
-    on_exit fn -> :mnesia.stop() end
   end
 
   defp bad_table(_) do
@@ -50,8 +30,6 @@ defmodule Expected.MnesiaStoreTest do
   end
 
   describe "if the Mnesia table does not exist, an exception is raised" do
-    setup [:start_mnesia]
-
     test "by list_user_logins/2" do
       assert_raise MnesiaStoreError,
                    MnesiaStoreError.message(%{reason: :table_not_exists}),
@@ -78,7 +56,7 @@ defmodule Expected.MnesiaStoreTest do
   end
 
   describe "if the Mnesia table has a bad format, an exception is raised" do
-    setup [:start_mnesia, :bad_table]
+    setup [:bad_table]
 
     test "by put/2" do
       assert_raise MnesiaStoreError,

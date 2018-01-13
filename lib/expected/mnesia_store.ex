@@ -11,7 +11,25 @@ defmodule Expected.MnesiaStore do
         ...
 
   This table is not created by the store. You can use helpers to create it (see
-  `Expected`) or create it yourself.
+  `Expected`) or create it yourself. In the latter case, you **must** ensure
+  that:
+
+    * the table is a `:bag`,
+    * it stores `Expected.MnesiaStore.LoginRecord`, *i.e.* the `record_name` is
+      set to `:login` and the attributes are the `Expected.Login` keys,
+    * `:serial` and `:last_login` must be indexed.
+
+  For instance:
+
+      :mnesia.start()
+      :mnesia.create_table(
+        :logins,
+        type: :bag,
+        record_name: :login,
+        attributes: Expected.Login.keys(),
+        index: [:serial, :last_login],
+        disc_copies: [node()]
+      )
 
   For Mnesia to work properly, you need to add it to your extra applications:
 
@@ -21,21 +39,13 @@ defmodule Expected.MnesiaStore do
           extra_applications: [:logger, :mnesia]
         ]
       end
-
-  ## Storage
-
-  Stored entries use the following format:
-
-      {
-        user_serial :: String.t(),
-        username :: String.t(),
-        login :: Expected.Login.t(),
-        last_login :: integer()
-      }
   """
 
   @behaviour Expected.Store
 
+  import __MODULE__.LoginRecord
+
+  alias __MODULE__.LoginRecord
   alias Expected.Login
   alias Expected.ConfigurationError
   alias Expected.MnesiaStoreError
@@ -51,12 +61,12 @@ defmodule Expected.MnesiaStore do
   @impl true
   def list_user_logins(username, table) do
     t = fn ->
-      :mnesia.match_object({table, :_, username, :_, :_})
+      :mnesia.read(table, username)
     end
 
     case :mnesia.transaction(t) do
       {:atomic, user_logins} ->
-        Enum.map(user_logins, fn {_, _, _, login, _} -> login end)
+        Enum.map(user_logins, &to_struct(&1))
 
       {:aborted, {:no_exists, _}} ->
         raise MnesiaStoreError, reason: :table_not_exists
@@ -66,12 +76,12 @@ defmodule Expected.MnesiaStore do
   @impl true
   def get(username, serial, table) do
     t = fn ->
-      :mnesia.read({table, "#{username}.#{serial}"})
+      do_get(username, serial, table)
     end
 
     case :mnesia.transaction(t) do
-      {:atomic, [{_, _, _, login, _}]} ->
-        {:ok, login}
+      {:atomic, [login]} ->
+        {:ok, to_struct(login)}
 
       {:atomic, []} ->
         {:error, :no_login}
@@ -82,15 +92,10 @@ defmodule Expected.MnesiaStore do
   end
 
   @impl true
-  def put(
-        %Login{username: username, serial: serial, last_login: last_login} =
-          login,
-        table
-      ) do
-    user_serial = "#{username}.#{serial}"
-
+  def put(%Login{username: username, serial: serial} = login, table) do
     t = fn ->
-      :mnesia.write({table, user_serial, username, login, last_login})
+      do_delete(username, serial, table)
+      :mnesia.write(table, from_struct(login), :write)
     end
 
     case :mnesia.transaction(t) do
@@ -108,7 +113,7 @@ defmodule Expected.MnesiaStore do
   @impl true
   def delete(username, serial, table) do
     t = fn ->
-      :mnesia.delete({table, "#{username}.#{serial}"})
+      do_delete(username, serial, table)
     end
 
     case :mnesia.transaction(t) do
@@ -129,15 +134,15 @@ defmodule Expected.MnesiaStore do
       old_logins =
         :mnesia.select(table, [
           {
-            {table, :"$1", :_, :"$3", :"$4"},
-            [{:<, :"$4", oldest_timestamp}],
-            [{{:"$1", :"$3"}}]
+            login(last_login: :"$1"),
+            [{:<, :"$1", oldest_timestamp}],
+            [:"$_"]
           }
         ])
 
-      for {user_serial, login} <- old_logins do
-        :mnesia.delete({table, user_serial})
-        login
+      for login <- old_logins do
+        :mnesia.delete_object(table, login, :write)
+        to_struct(login)
       end
     end
 
@@ -147,6 +152,24 @@ defmodule Expected.MnesiaStore do
 
       {:aborted, {:no_exists, _}} ->
         raise MnesiaStoreError, reason: :table_not_exists
+    end
+  end
+
+  @spec do_get(String.t(), String.t(), atom()) :: [LoginRecord.t()]
+  defp do_get(username, serial, table) do
+    :mnesia.index_match_object(
+      table,
+      login(username: username, serial: serial),
+      1 + login(:serial),
+      :read
+    )
+  end
+
+  @spec do_delete(String.t(), String.t(), atom()) :: :ok
+  defp do_delete(username, serial, table) do
+    case do_get(username, serial, table) do
+      [login] -> :mnesia.delete_object(table, login, :write)
+      [] -> :ok
     end
   end
 end

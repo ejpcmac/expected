@@ -7,13 +7,14 @@ defmodule Expected.MnesiaStore.Helpers do
   like distribution, you should create the table yourself.
   """
 
+  alias Expected.Login
   alias Expected.ConfigurationError
   alias Expected.MnesiaTableExistsError
 
   @typep persistence() :: :persistent | :volatile
   @typep return_value() :: :ok | {:error | :abort, term()}
 
-  @attributes [:user_serial, :username, :login, :last_login]
+  @attributes Login.keys()
 
   table_config = """
   For this function to work, `:table` must be set in your `config.exs`:
@@ -170,7 +171,10 @@ defmodule Expected.MnesiaStore.Helpers do
         else: []
 
     table_def = [
+      type: :bag,
+      record_name: :login,
       attributes: @attributes,
+      index: [:serial, :last_login],
       disc_copies: disc_copies
     ]
 

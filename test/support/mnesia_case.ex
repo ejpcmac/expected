@@ -7,11 +7,14 @@ defmodule Expected.MnesiaCase do
     quote do
       use ExUnit.Case
 
+      import Expected.MnesiaStore.LoginRecord
+
+      alias Expected.Login
       alias Expected.ConfigurationError
       alias Expected.MnesiaTableExistsError
 
       @table :logins_test
-      @attributes [:user_serial, :username, :login, :last_login]
+      @attributes Login.keys()
 
       setup do
         Application.put_env(:expected, :table, @table)
@@ -24,6 +27,16 @@ defmodule Expected.MnesiaCase do
           File.rm_rf("Mnesia.nonode@nohost")
           Application.delete_env(:expected, :table)
         end
+      end
+
+      defp create_table do
+        :mnesia.create_table(
+          @table,
+          type: :bag,
+          record_name: :login,
+          attributes: @attributes,
+          index: [:serial, :last_login]
+        )
       end
     end
   end

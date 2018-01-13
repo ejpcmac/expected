@@ -7,6 +7,9 @@ defmodule Expected.MnesiaStore.HelpersTest do
     test "creates a Mnesia schema and table according to the configuration" do
       assert :ok = Helpers.setup!()
       assert {:aborted, {:already_exists, _}} = :mnesia.create_table(@table, [])
+      assert :mnesia.table_info(@table, :type) == :bag
+      assert (1 + login(:serial)) in :mnesia.table_info(@table, :index)
+      assert (1 + login(:last_login)) in :mnesia.table_info(@table, :index)
       assert :mnesia.table_info(@table, :attributes) == @attributes
     end
 
