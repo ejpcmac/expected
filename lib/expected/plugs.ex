@@ -69,12 +69,12 @@ defmodule Expected.Plugs do
   ## Authentication cookie
 
   Authentication information is stored in a cookie. By default, it is valid for
-  three months after the last successful authentication. You can change this in
-  the application configuration:
+  90 days after the last successful authentication. You can change this in the
+  application configuration:
 
       config :expected,
         ...
-        cookie_max_age: 86_400        # Set to one day, for example.
+        cookie_max_age: 86_400  # Set to one day, for example.
 
   Alternatively, you can set it locally:
 
@@ -156,9 +156,7 @@ defmodule Expected.Plugs do
   Alternatively, you can set it locally:
 
       conn
-      |> put_session(:current_user, %User{username: "user", name: "A User"})
-      |> assign(:persistent_login, true)
-      |> register_login(cookie_max_age: 86_400)
+      |> authenticate(cookie_max_age: 86_400)
 
   ## Alerts
 

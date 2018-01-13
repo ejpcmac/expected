@@ -1,10 +1,10 @@
 defmodule Mix.Tasks.Expected.Mnesia.Setup do
   use Mix.Task
 
-  @shortdoc "Creates the Mnesia table for :expected"
+  @shortdoc "Creates the Mnesia table for Expected"
 
   @moduledoc """
-  Creates the Mnesia table for `:expected`.
+  Creates the Mnesia table for Expected.
 
   To set up the Mnesia table for login storage, configure it in your
   `config.exs`:
