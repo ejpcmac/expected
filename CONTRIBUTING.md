@@ -34,9 +34,9 @@ The `master` branch is reserved to releases: the development process occurs on
 
 3. Launch the tests:
 
-        $ mix test --stale
+        $ mix test
 
-All tests should pass.
+All the tests should pass.
 
 ## Workflow
 
@@ -53,7 +53,8 @@ To make a change, please follow this workflow:
 
         $ git checkout -b <my_branch>
 
-3. Work on your feature (don’t forget to write some tests, TDD is good ;-)):
+3. Work on your feature (don’t forget to write tests; you can check your
+    coverage with `mix coveralls.html` and open `cover/excoveralls.html`):
 
         # Some work
         $ git commit -am "My first change"
