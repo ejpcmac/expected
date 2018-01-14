@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Expected.Mnesia.DropTest do
   import Mix.Tasks.Expected.Mnesia.Drop
 
   describe "run/1" do
-    test "clears all logins from the store accorting to the configuration" do
+    test "drops the Mnesia table accorting to the configuration" do
       :mnesia.create_table(@table, attributes: @attributes)
       run([])
 
