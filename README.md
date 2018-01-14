@@ -41,14 +41,16 @@ There are also some optional fields:
   90 days)
 * `cleaner_period` - the login cleaner period in seconds (default: 1 day)
 * `session_opts` - options passed to `Plug.Session`
-* `plug_config` - options passed to the plugs in `Expected.Plugs`
+* `plug_config` - options passed to the plugs in
+  [`Expected.Plugs`](https://hexdocs.pm/expected/Expected.Plugs.html)
 
 #### Login store
 
 Currently, the built-in stores are `:mnesia` and `:memory`. `:memory` is for
 testing purpose only, so please use `:mnesia`. An official `:ecto` one could
 come some day; feel free to ask me if you need it or plan to implement it. You
-can also implement another store using the `Expected.Store`specifications.
+can also implement another store using the
+[`Expected.Store` specifications](https://hexdocs.pm/expected/Expected.Store.html).
 
 For the `:mnesia` store, you need to add a `:table` option to set the Mnesia
 table where to store logins. Then, ask mix to create the table for you:
@@ -57,11 +59,13 @@ table where to store logins. Then, ask mix to create the table for you:
     $ mix expected.mnesia.setup
 
 If you want to use a node name or a custom directory for the Mnesia database,
-you can take a look at `Mix.Tasks.Expected.Mnesia.Setup`.
+you can take a look at
+[`Mix.Tasks.Expected.Mnesia.Setup`](https://hexdocs.pm/expected/Mix.Tasks.Expected.Mnesia.Setup.html).
 
 You can also create it directly from Elixir using
-`Expected.MnesiaStore.Helpers.setup!/0`. This can be useful to include in a
-setup task to be run in a release environment.
+[`Expected.MnesiaStore.Helpers.setup!/0`](https://hexdocs.pm/expected/Expected.MnesiaStore.Helpers.html#setup!/0).
+This can be useful to include in a setup task to be run in a release
+environment.
 
 #### Authentication cookie
 
@@ -74,8 +78,9 @@ successful authentication. This can be configured using the `cookie_max_age`
 option in the configuration.
 
 To avoid old logins to accumulate in the store, inactive logins older than the
-`cookie_max_age` are automatically cleaned by `Expected.Cleaner` once a day.
-You can change this period by setting `cleaner_period` (in seconds) in the
+`cookie_max_age` are automatically cleaned by
+[`Expected.Cleaner`](https://hexdocs.pm/expected/Expected.Cleaner.html) once a
+day. You can change this period by setting `cleaner_period` (in seconds) in the
 application configuration.
 
 #### Session store
@@ -159,7 +164,8 @@ end
 To associate the login with a user, `register_login/2` expects a
 `:current_user` key featuring a `:username` field in the session. For more
 information and configuration options, please look at
-`Expected.Plugs.register_login/2` in the documentation.
+[`Expected.Plugs.register_login/2`](https://hexdocs.pm/expected/Expected.Plugs.html#register_login/2)
+in the documentation.
 
 ## Authentication
 
