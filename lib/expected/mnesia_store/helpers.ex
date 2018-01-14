@@ -104,7 +104,7 @@ defmodule Expected.MnesiaStore.Helpers do
   """
   @spec clear(atom()) :: :ok
   def clear(table) do
-    :mnesia.clear_table(table)
+    _ = :mnesia.clear_table(table)
     :ok
   end
 
@@ -113,7 +113,7 @@ defmodule Expected.MnesiaStore.Helpers do
   """
   @spec drop(atom()) :: :ok
   def drop(table) do
-    :mnesia.delete_table(table)
+    _ = :mnesia.delete_table(table)
     :ok
   end
 
