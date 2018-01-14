@@ -1,10 +1,13 @@
 defmodule Expected.Mixfile do
   use Mix.Project
 
+  @version "0.1.0"
+  @repo_url "https://github.com/ejpcmac/expected"
+
   def project do
     [
       app: :expected,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.5",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -19,7 +22,14 @@ defmodule Expected.Mixfile do
         coveralls: :test,
         "coveralls.detail": :test,
         "coveralls.html": :test
-      ]
+      ],
+      docs: [
+        main: "Expected",
+        source_url: @repo_url,
+        source_ref: "v#{@version}"
+      ],
+      package: package(),
+      description: "An Elixir module for login and session management."
     ]
   end
 
@@ -49,6 +59,14 @@ defmodule Expected.Mixfile do
 
       # Documentation dependencies
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+    ]
+  end
+
+  defp package do
+    [
+      maintainers: ["Jean-Philippe Cugnet"],
+      licenses: ["MIT"],
+      links: %{"GitHub" => @repo_url}
     ]
   end
 end
