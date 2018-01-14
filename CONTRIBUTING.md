@@ -25,30 +25,18 @@ The `master` branch is reserved to releases: the development process occurs on
 
 ### Development environment
 
-1. Install:
+1. Install an Elixir environment.
 
-    * [asdf](https://github.com/asdf-vm/asdf)
-
-
-2. Install Erlang and Elixir plugins for asdf:
-
-        $ asdf plugin-add erlang https://github.com/asdf-vm/asdf-erlang.git
-        $ asdf plugin-add elixir https://github.com/asdf-vm/asdf-elixir.git
-
-3. In the project repository, install the build toolchain:
+2. Fetch the project dependencies and build the project:
 
         $ cd expected
-        $ asdf install
-
-4. Fetch the project dependencies and build the project:
-
         $ mix do deps.get, compile
 
-5. Launch the tests:
+3. Launch the tests:
 
-        $ mix test --stale
+        $ mix test
 
-All tests should pass.
+All the tests should pass.
 
 ## Workflow
 
@@ -65,7 +53,8 @@ To make a change, please follow this workflow:
 
         $ git checkout -b <my_branch>
 
-3. Work on your feature (don’t forget to write some tests, TDD is good ;-)):
+3. Work on your feature (don’t forget to write tests; you can check your
+    coverage with `mix coveralls.html` and open `cover/excoveralls.html`):
 
         # Some work
         $ git commit -am "My first change"
@@ -97,3 +86,8 @@ To make a change, please follow this workflow:
 
 7. If it’s all good, open a pull request to merge your branch into the `develop`
     branch on the main repository.
+
+## Coding style
+
+Please format your code with `mix format` or your editor and follow
+[this style guide](https://github.com/christopheradams/elixir_style_guide).

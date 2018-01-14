@@ -1,0 +1,17 @@
+:0: Unknown function mnesia:change_table_copy_type/3
+:0: Unknown function mnesia:clear_table/1
+:0: Unknown function mnesia:create_table/2
+:0: Unknown function mnesia:delete_object/3
+:0: Unknown function mnesia:delete_table/1
+:0: Unknown function mnesia:index_match_object/4
+:0: Unknown function mnesia:read/2
+:0: Unknown function mnesia:select/2
+:0: Unknown function mnesia:start/0
+:0: Unknown function mnesia:table_info/2
+:0: Unknown function mnesia:transaction/1
+:0: Unknown function mnesia:write/3
+:0: Unknown function 'Elixir.Mix':env/0
+:0: Unknown function 'Elixir.Mix':shell/0
+lib/mix/tasks/expected.mnesia.setup.ex:1: Callback info about the 'Elixir.Mix.Task' behaviour is not available
+lib/mix/tasks/expected.mnesia.clear.ex:1: Callback info about the 'Elixir.Mix.Task' behaviour is not available
+lib/mix/tasks/expected.mnesia.drop.ex:1: Callback info about the 'Elixir.Mix.Task' behaviour is not available
