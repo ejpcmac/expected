@@ -2,6 +2,7 @@ defmodule ExpectedTest do
   use Expected.Case
 
   alias Expected.ConfigurationError
+  alias Plug.Session.ETS, as: SessionStore
 
   #################
   # API functions #
@@ -14,7 +15,7 @@ defmodule ExpectedTest do
     :ok = MemoryStore.put(@other_login, @server)
 
     # Also put a valid session for @login.
-    Plug.Session.ETS.put(nil, "sid", %{"a" => "b"}, @ets_table)
+    SessionStore.put(nil, "sid", %{"a" => "b"}, @ets_table)
 
     :ok
   end
@@ -55,7 +56,7 @@ defmodule ExpectedTest do
 
     test "deletes the session associated with the login if it exists" do
       assert :ok = Expected.delete_login("user", "serial")
-      assert Plug.Session.ETS.get(nil, "sid", @ets_table) == {nil, %{}}
+      assert SessionStore.get(nil, "sid", @ets_table) == {nil, %{}}
     end
 
     test "does nothing if the login does not exist" do
@@ -73,7 +74,7 @@ defmodule ExpectedTest do
 
     test "deletes the sessions associated with the logins if they exist" do
       assert :ok = Expected.delete_all_user_logins("user")
-      assert Plug.Session.ETS.get(nil, "sid", @ets_table) == {nil, %{}}
+      assert SessionStore.get(nil, "sid", @ets_table) == {nil, %{}}
     end
 
     test "does nothing if the user has no login in the store" do
@@ -92,11 +93,11 @@ defmodule ExpectedTest do
     end
 
     test "cleans the sessions associated with the old logins" do
-      Plug.Session.ETS.put(nil, "sid2", %{"a" => "b"}, @ets_table)
+      SessionStore.put(nil, "sid2", %{"a" => "b"}, @ets_table)
       :ok = MemoryStore.put(@old_login, @server)
 
       assert :ok = Expected.clean_old_logins(@three_months)
-      assert Plug.Session.ETS.get(nil, "sid2", @ets_table) == {nil, %{}}
+      assert SessionStore.get(nil, "sid2", @ets_table) == {nil, %{}}
     end
   end
 

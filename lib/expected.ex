@@ -263,6 +263,7 @@ defmodule Expected do
   alias Expected.Cleaner
   alias Expected.Login
   alias Expected.ConfigurationError
+  alias Plug.Session
 
   #################
   # API functions #
@@ -359,7 +360,7 @@ defmodule Expected do
 
     config_module =
       quote do
-        # credo:disable-for-next-line
+        # credo:disable-for-next-line Credo.Check.Readability.ModuleDoc
         defmodule Expected.Config do
           def get, do: unquote(Macro.escape(expected))
         end
@@ -407,7 +408,7 @@ defmodule Expected do
     ]
 
     other_opts = Application.get_env(:expected, :session_opts, [])
-    session_opts = Plug.Session.init(opts ++ other_opts)
+    session_opts = Session.init(opts ++ other_opts)
 
     expected
     |> Map.put(:session_opts, session_opts)
@@ -465,7 +466,7 @@ defmodule Expected do
     conn
     |> put_private(:expected, expected)
     |> register_before_send(&before_send(&1))
-    |> Plug.Session.call(expected.session_opts)
+    |> Session.call(expected.session_opts)
   end
 
   @spec before_send(Plug.Conn.t(), keyword()) :: Plug.Conn.t()

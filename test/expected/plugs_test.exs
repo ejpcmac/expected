@@ -7,6 +7,8 @@ defmodule Expected.PlugsTest do
   alias Expected.CurrentUserError
   alias Expected.InvalidUserError
   alias Expected.PlugError
+  alias Plug.Session
+  alias Plug.Session.ETS, as: SessionStore
 
   @one_minute_ago @now - System.convert_time_unit(60, :seconds, :native)
 
@@ -183,7 +185,7 @@ defmodule Expected.PlugsTest do
       assert_raise PlugError, fn ->
         :get
         |> conn("/")
-        |> Plug.Session.call(Plug.Session.init(@session_opts))
+        |> Session.call(Session.init(@session_opts))
         |> fetch_session()
         |> put_session(:current_user, %{username: "user"})
         |> register_login()
@@ -281,7 +283,7 @@ defmodule Expected.PlugsTest do
 
       sid = session_conn.cookies[@session_cookie]
 
-      assert {_, %{"a" => "b"}} = Plug.Session.ETS.get(nil, sid, @ets_table)
+      assert {_, %{"a" => "b"}} = SessionStore.get(nil, sid, @ets_table)
 
       login = %{@login | sid: sid}
       :ok = MemoryStore.put(login, @server)
@@ -292,7 +294,7 @@ defmodule Expected.PlugsTest do
       |> authenticate()
       |> send_resp(:ok, "")
 
-      assert Plug.Session.ETS.get(nil, sid, @ets_table) == {nil, %{}}
+      assert SessionStore.get(nil, sid, @ets_table) == {nil, %{}}
     end
 
     test "creates a new session when authenticating from an auth_cookie", %{
@@ -538,7 +540,7 @@ defmodule Expected.PlugsTest do
       assert_raise PlugError, fn ->
         :get
         |> conn("/")
-        |> Plug.Session.call(Plug.Session.init(@session_opts))
+        |> Session.call(Session.init(@session_opts))
         |> fetch_session()
         |> authenticate()
         |> send_resp(:ok, "")
@@ -561,14 +563,14 @@ defmodule Expected.PlugsTest do
     end
 
     test "deletes the session if there is valid auth_cookie", %{conn: conn} do
-      Plug.Session.ETS.put(nil, "sid", %{"a" => "b"}, @ets_table)
+      SessionStore.put(nil, "sid", %{"a" => "b"}, @ets_table)
 
       conn
       |> put_req_cookie(@auth_cookie, @auth_cookie_content)
       |> fetch_session()
       |> logout()
 
-      assert Plug.Session.ETS.get(nil, "sid", @ets_table) == {nil, %{}}
+      assert SessionStore.get(nil, "sid", @ets_table) == {nil, %{}}
     end
 
     test "deletes the auth cookie", %{conn: conn} do
@@ -624,7 +626,7 @@ defmodule Expected.PlugsTest do
       assert_raise PlugError, fn ->
         :get
         |> conn("/")
-        |> Plug.Session.call(Plug.Session.init(@session_opts))
+        |> Session.call(Session.init(@session_opts))
         |> fetch_session()
         |> logout()
         |> send_resp(:ok, "")
