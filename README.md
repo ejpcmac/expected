@@ -2,7 +2,7 @@
 
 [![hex.pm version](http://img.shields.io/hexpm/v/expected.svg?style=flat)](https://hex.pm/packages/expected)
 
-Expected is an Elixir module for login and session management. It enables
+Expected is an Elixir application for login and session management. It enables
 persistent logins through a cookie, following Barry Jaspan’s
 [Improved Persistent Login Cookie Best Practice](http://www.jaspan.com/improved_persistent_login_cookie_best_practice).
 It also provides an API to list and discard sessions.

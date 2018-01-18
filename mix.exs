@@ -29,7 +29,7 @@ defmodule Expected.Mixfile do
         source_ref: "v#{@version}"
       ],
       package: package(),
-      description: "An Elixir module for login and session management."
+      description: "An Elixir application for login and session management."
     ]
   end
 
