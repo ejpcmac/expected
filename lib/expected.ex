@@ -537,7 +537,9 @@ defmodule Expected do
   defp put_auth_cookie(conn, login) do
     auth_cookie_name = conn.private.expected.auth_cookie
     max_age = conn.private.expected.cookie_max_age
-    auth_cookie = "#{login.username}.#{login.serial}.#{login.token}"
+
+    auth_cookie =
+      "#{Base.encode64(login.username)}.#{login.serial}.#{login.token}"
 
     put_resp_cookie(conn, auth_cookie_name, auth_cookie, max_age: max_age)
   end

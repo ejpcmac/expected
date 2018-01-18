@@ -18,8 +18,12 @@ defmodule Expected.PlugsTest do
     table: @ets_table
   ]
 
-  @not_loaded_user %NotLoadedUser{username: "user"}
-  @auth_cookie_content "user.serial.token"
+  @not_loaded_user %NotLoadedUser{username: @username}
+
+  @encoded_username Base.encode64(@username)
+  @auth_cookie_content "#{@encoded_username}.#{@serial}.#{@token}"
+  @no_login_cookie "#{Base.encode64("some_user")}.some_serial.some_token"
+  @bad_token_cookie "#{@encoded_username}.#{@serial}.bad_token"
 
   setup do
     setup_stores()
@@ -82,7 +86,9 @@ defmodule Expected.PlugsTest do
         |> send_resp(:ok, "")
 
       assert [%Login{} = login] = MemoryStore.list_user_logins("user", @server)
-      assert conn.cookies[@auth_cookie] == "user.#{login.serial}.#{login.token}"
+
+      assert conn.cookies[@auth_cookie] ==
+               "#{Base.encode64(login.username)}.#{login.serial}.#{login.token}"
     end
 
     ## Configuration
@@ -263,14 +269,16 @@ defmodule Expected.PlugsTest do
         |> authenticate()
         |> send_resp(:ok, "")
 
-      [login] = MemoryStore.list_user_logins("user", @server)
+      [login] = MemoryStore.list_user_logins(@username, @server)
 
-      assert login.serial == @login.serial
-      assert login.token != @login.token
-      assert login.sid != @login.sid
+      assert login.serial == @serial
+      assert login.token != @token
+      assert login.sid != @sid
       assert login.created_at == @login.created_at
       assert login.last_login > @login.last_login
-      assert conn.cookies[@auth_cookie] == "user.#{login.serial}.#{login.token}"
+
+      assert conn.cookies[@auth_cookie] ==
+               "#{Base.encode64(login.username)}.#{login.serial}.#{login.token}"
     end
 
     test "deletes the old session from the store when authenticating from an
@@ -476,7 +484,7 @@ defmodule Expected.PlugsTest do
           login", %{conn: conn} do
       conn =
         conn
-        |> put_req_cookie(@auth_cookie, "some_user.some_serial.some_token")
+        |> put_req_cookie(@auth_cookie, @no_login_cookie)
         |> fetch_session()
         |> authenticate()
 
@@ -491,7 +499,7 @@ defmodule Expected.PlugsTest do
     } do
       conn =
         conn
-        |> put_req_cookie(@auth_cookie, "some_user.some_serial.some_token")
+        |> put_req_cookie(@auth_cookie, @no_login_cookie)
         |> fetch_session()
         |> authenticate()
         |> send_resp(:ok, "")
@@ -503,7 +511,7 @@ defmodule Expected.PlugsTest do
           expected one", %{conn: conn} do
       conn =
         conn
-        |> put_req_cookie(@auth_cookie, "user.serial.bad_token")
+        |> put_req_cookie(@auth_cookie, @bad_token_cookie)
         |> fetch_session()
         |> authenticate()
 
@@ -517,7 +525,7 @@ defmodule Expected.PlugsTest do
     test "deletes the auth_cookie if the token does not match", %{conn: conn} do
       conn =
         conn
-        |> put_req_cookie(@auth_cookie, "user.serial.bad_token")
+        |> put_req_cookie(@auth_cookie, @bad_token_cookie)
         |> fetch_session()
         |> authenticate()
         |> send_resp(:ok, "")
@@ -529,7 +537,7 @@ defmodule Expected.PlugsTest do
       conn: conn
     } do
       conn
-      |> put_req_cookie(@auth_cookie, "user.serial.bad_token")
+      |> put_req_cookie(@auth_cookie, @bad_token_cookie)
       |> fetch_session()
       |> authenticate()
 
@@ -563,14 +571,14 @@ defmodule Expected.PlugsTest do
     end
 
     test "deletes the session if there is valid auth_cookie", %{conn: conn} do
-      SessionStore.put(nil, "sid", %{"a" => "b"}, @ets_table)
+      SessionStore.put(nil, @sid, %{"a" => "b"}, @ets_table)
 
       conn
       |> put_req_cookie(@auth_cookie, @auth_cookie_content)
       |> fetch_session()
       |> logout()
 
-      assert SessionStore.get(nil, "sid", @ets_table) == {nil, %{}}
+      assert SessionStore.get(nil, @sid, @ets_table) == {nil, %{}}
     end
 
     test "deletes the auth cookie", %{conn: conn} do
@@ -587,7 +595,7 @@ defmodule Expected.PlugsTest do
     test "deletes the session cookie", %{conn: conn} do
       conn =
         conn
-        |> put_req_cookie(@session_cookie, "sid")
+        |> put_req_cookie(@session_cookie, @sid)
         |> put_req_cookie(@auth_cookie, @auth_cookie_content)
         |> fetch_session()
         |> logout()
@@ -614,7 +622,7 @@ defmodule Expected.PlugsTest do
     } do
       conn =
         conn
-        |> put_req_cookie(@auth_cookie, "some_user.some_serial.some_token")
+        |> put_req_cookie(@auth_cookie, @no_login_cookie)
         |> fetch_session()
         |> logout()
         |> send_resp(:ok, "")

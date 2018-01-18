@@ -15,7 +15,7 @@ defmodule ExpectedTest do
     :ok = MemoryStore.put(@other_login, @server)
 
     # Also put a valid session for @login.
-    SessionStore.put(nil, "sid", %{"a" => "b"}, @ets_table)
+    SessionStore.put(nil, @sid, %{"a" => "b"}, @ets_table)
 
     :ok
   end
@@ -42,7 +42,7 @@ defmodule ExpectedTest do
     setup [:with_login]
 
     test "lists logins for the given user" do
-      assert Expected.list_user_logins("user") == [@login]
+      assert Expected.list_user_logins(@username) == [@login]
     end
   end
 
@@ -50,12 +50,12 @@ defmodule ExpectedTest do
     setup [:with_login]
 
     test "deletes a login if it exists" do
-      assert :ok = Expected.delete_login("user", "serial")
-      assert {:error, :no_login} = MemoryStore.get("user", "serial", @server)
+      assert :ok = Expected.delete_login(@username, @serial)
+      assert {:error, :no_login} = MemoryStore.get(@username, @serial, @server)
     end
 
     test "deletes the session associated with the login if it exists" do
-      assert :ok = Expected.delete_login("user", "serial")
+      assert :ok = Expected.delete_login(@username, @serial)
       assert SessionStore.get(nil, "sid", @ets_table) == {nil, %{}}
     end
 
@@ -68,12 +68,12 @@ defmodule ExpectedTest do
     setup [:with_login]
 
     test "deletes all user logins for the given username" do
-      assert :ok = Expected.delete_all_user_logins("user")
-      assert MemoryStore.list_user_logins("user", @server) == []
+      assert :ok = Expected.delete_all_user_logins(@username)
+      assert MemoryStore.list_user_logins(@username, @server) == []
     end
 
     test "deletes the sessions associated with the logins if they exist" do
-      assert :ok = Expected.delete_all_user_logins("user")
+      assert :ok = Expected.delete_all_user_logins(@username)
       assert SessionStore.get(nil, "sid", @ets_table) == {nil, %{}}
     end
 
@@ -89,7 +89,7 @@ defmodule ExpectedTest do
       :ok = MemoryStore.put(@old_login, @server)
 
       assert :ok = Expected.clean_old_logins(@three_months)
-      assert MemoryStore.list_user_logins("user", @server) == [@login]
+      assert MemoryStore.list_user_logins(@username, @server) == [@login]
     end
 
     test "cleans the sessions associated with the old logins" do

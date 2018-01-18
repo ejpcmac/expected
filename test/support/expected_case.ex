@@ -21,11 +21,15 @@ defmodule Expected.Case do
       @four_months System.convert_time_unit(10_368_000, :seconds, :native)
       @four_months_ago @now - @four_months
 
+      @username "user"
+      @serial "serial"
+      @token "token"
+      @sid "sid"
       @login %Login{
-        username: "user",
-        serial: "serial",
-        token: "token",
-        sid: "sid",
+        username: @username,
+        serial: @serial,
+        token: @token,
+        sid: @sid,
         created_at: @now,
         last_login: @now,
         last_ip: {127, 0, 0, 1},

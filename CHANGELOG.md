@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.1
+
+* Encode the username in Base64 in the authentication cookie to allow it
+  contains dots
+
 ## v0.1.0
 
 * Login store specification

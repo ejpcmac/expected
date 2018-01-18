@@ -27,7 +27,7 @@ defmodule Expected.CleanerTest do
       # Wait for the cleaning to trigger.
       Process.sleep(1100)
 
-      assert MemoryStore.list_user_logins("user", @server) == [@login]
+      assert MemoryStore.list_user_logins(@username, @server) == [@login]
     end
 
     test "does not trigger login cleaning before timeout" do
@@ -38,7 +38,7 @@ defmodule Expected.CleanerTest do
       # Wait a millisecond to let the cleaner start.
       Process.sleep(1)
 
-      assert MemoryStore.list_user_logins("user", @server) == [
+      assert MemoryStore.list_user_logins(@username, @server) == [
                @login,
                @old_login
              ]
