@@ -1,7 +1,7 @@
 defmodule Expected.Mixfile do
   use Mix.Project
 
-  @version "0.1.1-dev"
+  @version "0.1.1"
   @repo_url "https://github.com/ejpcmac/expected"
 
   def project do

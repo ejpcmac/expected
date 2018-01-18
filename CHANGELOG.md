@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.1-dev
+## v0.1.1
 
 * Encode the username in Base64 in the authentication cookie to allow it
   contains dots

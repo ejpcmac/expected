@@ -12,7 +12,7 @@ It also provides an API to list and discard sessions.
 To use Expected in your app, add this to your dependencies:
 
 ```elixir
-{:expected, "~> 0.1.0"}
+{:expected, "~> 0.1.1"}
 ```
 
 ### Configuration
