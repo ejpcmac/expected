@@ -243,12 +243,11 @@ defmodule Expected.Plugs do
           {:ok, String.t(), String.t(), String.t()}
           | {:error, :invalid}
   defp parse_auth_cookie(auth_cookie) when is_binary(auth_cookie) do
-    case String.split(auth_cookie, ".") do
-      [user, serial, token] ->
-        {:ok, user, serial, token}
-
-      _ ->
-        {:error, :invalid}
+    with [encoded_user, serial, token] <- String.split(auth_cookie, "."),
+         {:ok, user} <- Base.decode64(encoded_user) do
+      {:ok, user, serial, token}
+    else
+      _ -> {:error, :invalid}
     end
   end
 

@@ -19,9 +19,11 @@ defmodule Expected.PlugsTest do
   ]
 
   @not_loaded_user %NotLoadedUser{username: @username}
-  @auth_cookie_content "#{@username}.#{@serial}.#{@token}"
-  @no_login_cookie "some_user.some_serial.some_token"
-  @bad_token_cookie "#{@username}.#{@serial}.bad_token"
+
+  @encoded_username Base.encode64(@username)
+  @auth_cookie_content "#{@encoded_username}.#{@serial}.#{@token}"
+  @no_login_cookie "#{Base.encode64("some_user")}.some_serial.some_token"
+  @bad_token_cookie "#{@encoded_username}.#{@serial}.bad_token"
 
   setup do
     setup_stores()
@@ -86,7 +88,7 @@ defmodule Expected.PlugsTest do
       assert [%Login{} = login] = MemoryStore.list_user_logins("user", @server)
 
       assert conn.cookies[@auth_cookie] ==
-               "#{login.username}.#{login.serial}.#{login.token}"
+               "#{Base.encode64(login.username)}.#{login.serial}.#{login.token}"
     end
 
     ## Configuration
@@ -276,7 +278,7 @@ defmodule Expected.PlugsTest do
       assert login.last_login > @login.last_login
 
       assert conn.cookies[@auth_cookie] ==
-               "#{login.username}.#{login.serial}.#{login.token}"
+               "#{Base.encode64(login.username)}.#{login.serial}.#{login.token}"
     end
 
     test "deletes the old session from the store when authenticating from an
