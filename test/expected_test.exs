@@ -1,5 +1,6 @@
 defmodule ExpectedTest do
   use Expected.Case
+  use ExUnitProperties
 
   alias Expected.ConfigurationError
   alias Plug.Session.ETS, as: SessionStore
@@ -8,16 +9,44 @@ defmodule ExpectedTest do
   # API functions #
   #################
 
-  defp with_login(_) do
-    setup_stores()
+  # Username generator
+  defp username, do: string(:ascii, min_length: 3)
 
-    :ok = MemoryStore.put(@login, @server)
-    :ok = MemoryStore.put(@other_login, @server)
+  # Login generator
+  defp login(opts \\ []) do
+    now = System.os_time()
+    min_age = System.convert_time_unit(opts[:min_age] || 0, :seconds, :native)
+    max_age = System.convert_time_unit(opts[:max_age] || now, :seconds, :native)
 
-    # Also put a valid session for @login.
-    SessionStore.put(nil, @sid, %{"a" => "b"}, @ets_table)
+    gen all gen_username <- username(),
+            timestamp <- integer((now - max_age)..(now - min_age)),
+            ip <- {byte(), byte(), byte(), byte()},
+            useragent <- string(:ascii) do
+      username = opts[:username] || gen_username
 
-    :ok
+      # Create a real session only if opts[:store] != false
+      sid =
+        if opts[:store] == false,
+          do: 96 |> :crypto.strong_rand_bytes() |> Base.encode64(),
+          else: SessionStore.put(nil, nil, %{username: username}, @ets_table)
+
+      login = %Login{
+        username: username,
+        serial: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
+        token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
+        sid: sid,
+        created_at: timestamp,
+        last_login: timestamp,
+        last_ip: ip,
+        last_useragent: useragent
+      }
+
+      unless opts[:store] == false do
+        :ok = MemoryStore.put(login, @server)
+      end
+
+      login
+    end
   end
 
   describe "unexpected_token?/1" do
@@ -39,65 +68,124 @@ defmodule ExpectedTest do
   end
 
   describe "list_user_logins/1" do
-    setup [:with_login]
+    setup [:setup_stores]
 
-    test "lists logins for the given user" do
-      assert Expected.list_user_logins(@username) == [@login]
+    property "lists logins for the given user" do
+      check all user <- username(),
+                length <- integer(1..5),
+                user_logins <- list_of(login(username: user), length: length),
+                _other_logins <- list_of(login(), length: 5) do
+        logins = Expected.list_user_logins(user)
+
+        assert length(logins) == length
+
+        Enum.each(user_logins, fn login ->
+          assert login in logins
+        end)
+      end
     end
   end
 
   describe "delete_login/2" do
-    setup [:with_login]
+    setup [:setup_stores]
 
-    test "deletes a login if it exists" do
-      assert :ok = Expected.delete_login(@username, @serial)
-      assert {:error, :no_login} = MemoryStore.get(@username, @serial, @server)
+    property "deletes a login if it exists" do
+      check all %{username: username, serial: serial} <- login() do
+        assert {:ok, %Login{}} = MemoryStore.get(username, serial, @server)
+        assert :ok = Expected.delete_login(username, serial)
+        assert {:error, :no_login} = MemoryStore.get(username, serial, @server)
+      end
     end
 
-    test "deletes the session associated with the login if it exists" do
-      assert :ok = Expected.delete_login(@username, @serial)
-      assert SessionStore.get(nil, "sid", @ets_table) == {nil, %{}}
+    property "deletes the session associated with the login if it exists" do
+      check all %{username: username, serial: serial, sid: sid} <- login() do
+        assert SessionStore.get(nil, sid, @ets_table) ==
+                 {sid, %{username: username}}
+
+        assert :ok = Expected.delete_login(username, serial)
+        assert SessionStore.get(nil, sid, @ets_table) == {nil, %{}}
+      end
     end
 
-    test "does nothing if the login does not exist" do
-      assert :ok = Expected.delete_login("false_user", "bad_serial")
+    property "does nothing if the login does not exist" do
+      check all %{username: user, serial: serial} <- login(store: false) do
+        assert :ok = Expected.delete_login(user, serial)
+      end
     end
   end
 
   describe "delete_all_user_logins/1" do
-    setup [:with_login]
+    setup [:setup_stores]
 
-    test "deletes all user logins for the given username" do
-      assert :ok = Expected.delete_all_user_logins(@username)
-      assert MemoryStore.list_user_logins(@username, @server) == []
+    property "deletes all user logins for the given username" do
+      check all user <- username(),
+                _user_logins <- list_of(login(username: user), length: 5),
+                _other_logins <- list_of(login(), length: 5) do
+        assert user |> MemoryStore.list_user_logins(@server) |> length() == 5
+        assert :ok = Expected.delete_all_user_logins(user)
+        assert MemoryStore.list_user_logins(user, @server) == []
+      end
     end
 
-    test "deletes the sessions associated with the logins if they exist" do
-      assert :ok = Expected.delete_all_user_logins(@username)
-      assert SessionStore.get(nil, "sid", @ets_table) == {nil, %{}}
+    property "deletes the sessions associated with the logins if they exist" do
+      check all username <- username(),
+                user_logins <- list_of(login(username: username), length: 5),
+                _other_logins <- list_of(login(), length: 5) do
+        Enum.each(user_logins, fn %Login{sid: sid} ->
+          assert SessionStore.get(nil, sid, @ets_table) ==
+                   {sid, %{username: username}}
+        end)
+
+        assert :ok = Expected.delete_all_user_logins(username)
+
+        Enum.each(user_logins, fn %Login{sid: sid} ->
+          assert SessionStore.get(nil, sid, @ets_table) == {nil, %{}}
+        end)
+      end
     end
 
-    test "does nothing if the user has no login in the store" do
-      assert :ok = Expected.delete_all_user_logins("false_user")
+    property "does nothing if the user has no login in the store" do
+      check all username <- username() do
+        assert :ok = Expected.delete_all_user_logins(username)
+      end
     end
   end
 
   describe "clean_old_logins/1" do
-    setup [:with_login]
+    setup [:setup_stores]
 
-    test "deletes the logins older than max_age" do
-      :ok = MemoryStore.put(@old_login, @server)
+    property "deletes the logins older than max_age" do
+      check all max_age <- integer(1..@three_months),
+                recent_logins <- list_of(login(max_age: max_age), length: 5),
+                old_logins <- list_of(login(min_age: max_age), length: 5) do
+        assert :ok = Expected.clean_old_logins(max_age)
 
-      assert :ok = Expected.clean_old_logins(@three_months)
-      assert MemoryStore.list_user_logins(@username, @server) == [@login]
+        Enum.each(recent_logins, fn %{username: username, serial: serial} ->
+          assert {:ok, %Login{}} = MemoryStore.get(username, serial, @server)
+        end)
+
+        Enum.each(old_logins, fn %{username: username, serial: serial} ->
+          assert {:error, :no_login} =
+                   MemoryStore.get(username, serial, @server)
+        end)
+      end
     end
 
-    test "cleans the sessions associated with the old logins" do
-      SessionStore.put(nil, "sid2", %{"a" => "b"}, @ets_table)
-      :ok = MemoryStore.put(@old_login, @server)
+    property "cleans the sessions associated with the old logins" do
+      check all max_age <- integer(1..@three_months),
+                recent_logins <- list_of(login(max_age: max_age), length: 5),
+                old_logins <- list_of(login(min_age: max_age), length: 5) do
+        assert :ok = Expected.clean_old_logins(max_age)
 
-      assert :ok = Expected.clean_old_logins(@three_months)
-      assert SessionStore.get(nil, "sid2", @ets_table) == {nil, %{}}
+        Enum.each(recent_logins, fn %Login{username: username, sid: sid} ->
+          assert SessionStore.get(nil, sid, @ets_table) ==
+                   {sid, %{username: username}}
+        end)
+
+        Enum.each(old_logins, fn %Login{sid: sid} ->
+          assert SessionStore.get(nil, sid, @ets_table) == {nil, %{}}
+        end)
+      end
     end
   end
 

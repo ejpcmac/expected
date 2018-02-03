@@ -59,9 +59,10 @@ defmodule Expected.Case do
         end)
       end
 
-      defp setup_stores do
+      defp setup_stores(_ \\ :ok) do
         :ets.new(@ets_table, [:named_table, :public])
         MemoryStore.start_link()
+        :ok
       end
     end
   end
