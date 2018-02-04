@@ -55,134 +55,189 @@ defmodule Expected.PlugsTest do
 
     ## Standard cases
 
-    test "creates a new login entry in the store if all is correcty configured",
-         %{conn: conn} do
-      conn =
-        conn
-        |> put_req_header("user-agent", "ExUnit")
-        |> put_session(:current_user, %{username: "user"})
-        |> register_login()
-        |> send_resp(:ok, "")
+    property "creates a new login entry in the store if all is correcty
+              configured", %{conn: conn} do
+      check all username <- username(),
+                useragent <- string(:ascii) do
+        conn =
+          conn
+          |> put_req_header("user-agent", useragent)
+          |> put_session(:current_user, %{username: username})
+          |> register_login()
+          |> send_resp(:ok, "")
 
-      assert [%Login{} = login] = MemoryStore.list_user_logins("user", @server)
-      assert login.username == "user"
-      assert is_binary(login.serial)
-      assert String.length(login.serial) != 0
-      assert is_binary(login.token)
-      assert String.length(login.token) != 0
-      assert login.sid == conn.cookies[@session_cookie]
-      assert login.created_at > @one_minute_ago
-      assert login.last_login > @one_minute_ago
-      assert login.last_ip == {127, 0, 0, 1}
-      assert login.last_useragent == "ExUnit"
+        assert [%Login{} = login] =
+                 MemoryStore.list_user_logins(username, @server)
+
+        assert login.username == username
+        assert is_binary(login.serial)
+        assert String.length(login.serial) != 0
+        assert is_binary(login.token)
+        assert String.length(login.token) != 0
+        assert login.sid == conn.cookies[@session_cookie]
+        assert login.created_at > @one_minute_ago
+        assert login.last_login > @one_minute_ago
+        assert login.last_ip == {127, 0, 0, 1}
+        assert login.last_useragent == useragent
+      end
     end
 
-    test "puts an auth_cookie if all is correctly configured", %{conn: conn} do
-      conn =
-        conn
-        |> put_req_header("user-agent", "ExUnit")
-        |> put_session(:current_user, %{username: "user"})
-        |> register_login()
-        |> send_resp(:ok, "")
+    property "puts an auth_cookie if all is correctly configured", %{
+      conn: conn
+    } do
+      check all username <- username(),
+                useragent <- string(:ascii) do
+        conn =
+          conn
+          |> put_req_header("user-agent", useragent)
+          |> put_session(:current_user, %{username: username})
+          |> register_login()
+          |> send_resp(:ok, "")
 
-      assert [%Login{} = login] = MemoryStore.list_user_logins("user", @server)
+        assert [%Login{} = login] =
+                 MemoryStore.list_user_logins(username, @server)
 
-      assert conn.cookies[@auth_cookie] ==
-               "#{Base.encode64(login.username)}.#{login.serial}.#{login.token}"
+        assert conn.cookies[@auth_cookie] ==
+                 "#{Base.encode64(username)}.#{login.serial}.#{login.token}"
+      end
     end
 
     ## Configuration
 
-    test "uses the current_user set in the application environment", %{
+    property "uses the current_user set in the application environment", %{
       conn: conn
     } do
-      Application.put_env(:expected, :plug_config, current_user: :test_user)
+      check all env_field <- atom(:alphanumeric),
+                env_field != :current_user,
+                username <- username(),
+                env_username <- username(),
+                env_username != username do
+        Application.put_env(:expected, :plug_config, current_user: env_field)
 
-      conn
-      |> put_session(:current_user, %{username: "user"})
-      |> put_session(:test_user, %{username: "test_user"})
-      |> register_login()
-      |> send_resp(:ok, "")
-
-      assert [] = MemoryStore.list_user_logins("user", @server)
-      assert [%Login{}] = MemoryStore.list_user_logins("test_user", @server)
-    end
-
-    test "uses preferably the current_user set in options", %{conn: conn} do
-      Application.put_env(:expected, :plug_config, current_user: :test_user)
-
-      conn
-      |> put_session(:current_user, %{username: "user"})
-      |> put_session(:test_user, %{username: "test_user"})
-      |> put_session(:other_user, %{username: "other_user"})
-      |> register_login(current_user: :other_user)
-      |> send_resp(:ok, "")
-
-      assert [] = MemoryStore.list_user_logins("user", @server)
-      assert [] = MemoryStore.list_user_logins("test_user", @server)
-      assert [%Login{}] = MemoryStore.list_user_logins("other_user", @server)
-    end
-
-    test "uses the username field set in the application environment", %{
-      conn: conn
-    } do
-      Application.put_env(:expected, :plug_config, username: :user_id)
-
-      conn
-      |> put_session(:current_user, %{username: "user", user_id: "user_id"})
-      |> register_login()
-      |> send_resp(:ok, "")
-
-      assert [] = MemoryStore.list_user_logins("user", @server)
-
-      assert [%Login{username: "user_id"}] =
-               MemoryStore.list_user_logins("user_id", @server)
-    end
-
-    test "uses preferably the username field set in options", %{conn: conn} do
-      Application.put_env(:expected, :plug_config, username: :user_id)
-
-      user = %{username: "user", user_id: "user_id", id: "id"}
-
-      conn
-      |> put_session(:current_user, user)
-      |> register_login(username: :id)
-      |> send_resp(:ok, "")
-
-      assert [] = MemoryStore.list_user_logins("user", @server)
-      assert [] = MemoryStore.list_user_logins("user_id", @server)
-
-      assert [%Login{username: "id"}] =
-               MemoryStore.list_user_logins("id", @server)
-    end
-
-    test "uses the auth_cookie max age set in the application environment", %{
-      conn: conn
-    } do
-      Application.put_env(:expected, :cookie_max_age, 7)
-
-      conn =
         conn
-        |> put_session(:current_user, %{username: "user"})
+        |> put_session(:current_user, %{username: username})
+        |> put_session(env_field, %{username: env_username})
         |> register_login()
         |> send_resp(:ok, "")
 
-      assert conn |> get_resp_header("set-cookie") |> Enum.join() =~ "max-age=7"
+        assert [] = MemoryStore.list_user_logins(username, @server)
+        assert [%Login{}] = MemoryStore.list_user_logins(env_username, @server)
+      end
     end
 
-    test "uses preferably the auth_cookie max age set in options", %{
-      conn: conn
-    } do
-      Application.put_env(:expected, :cookie_max_age, 7)
+    property "uses preferably the current_user set in options", %{conn: conn} do
+      check all env_field <- atom(:alphanumeric),
+                opt_field <- atom(:alphanumeric),
+                opt_field != env_field != :current_user,
+                username <- username(),
+                env_username <- username(),
+                opt_username <- username(),
+                opt_username != env_username != username do
+        Application.put_env(:expected, :plug_config, current_user: env_field)
 
-      conn =
         conn
-        |> put_session(:current_user, %{username: "user"})
-        |> register_login(cookie_max_age: 9)
+        |> put_session(:current_user, %{username: username})
+        |> put_session(env_field, %{username: env_username})
+        |> put_session(opt_field, %{username: opt_username})
+        |> register_login(current_user: opt_field)
         |> send_resp(:ok, "")
 
-      assert conn |> get_resp_header("set-cookie") |> Enum.join() =~ "max-age=9"
-      refute conn |> get_resp_header("set-cookie") |> Enum.join() =~ "max-age=7"
+        assert [] = MemoryStore.list_user_logins(username, @server)
+        assert [] = MemoryStore.list_user_logins(env_username, @server)
+        assert [%Login{}] = MemoryStore.list_user_logins(opt_username, @server)
+      end
+    end
+
+    property "uses the username field set in the application environment", %{
+      conn: conn
+    } do
+      check all env_field <- atom(:alphanumeric),
+                env_field != :username,
+                username <- username(),
+                env_username <- username(),
+                env_username != username do
+        Application.put_env(:expected, :plug_config, username: env_field)
+
+        user = Map.put(%{username: username}, env_field, env_username)
+
+        conn
+        |> put_session(:current_user, user)
+        |> register_login()
+        |> send_resp(:ok, "")
+
+        assert [] = MemoryStore.list_user_logins(username, @server)
+
+        assert [%Login{username: ^env_username}] =
+                 MemoryStore.list_user_logins(env_username, @server)
+      end
+    end
+
+    property "uses preferably the username field set in options", %{
+      conn: conn
+    } do
+      check all env_field <- atom(:alphanumeric),
+                opt_field <- atom(:alphanumeric),
+                opt_field != env_field != :username,
+                username <- username(),
+                env_username <- username(),
+                opt_username <- username(),
+                opt_username != env_username != username do
+        Application.put_env(:expected, :plug_config, username: env_field)
+
+        user =
+          %{username: username}
+          |> Map.put(env_field, env_username)
+          |> Map.put(opt_field, opt_username)
+
+        conn
+        |> put_session(:current_user, user)
+        |> register_login(username: opt_field)
+        |> send_resp(:ok, "")
+
+        assert [] = MemoryStore.list_user_logins(username, @server)
+        assert [] = MemoryStore.list_user_logins(env_username, @server)
+
+        assert [%Login{username: ^opt_username}] =
+                 MemoryStore.list_user_logins(opt_username, @server)
+      end
+    end
+
+    property "uses the auth_cookie max age set in the application environment",
+             %{conn: conn} do
+      check all max_age <- integer(1..@three_months) do
+        Application.put_env(:expected, :cookie_max_age, max_age)
+
+        conn =
+          conn
+          |> put_session(:current_user, %{username: "user"})
+          |> register_login()
+          |> send_resp(:ok, "")
+
+        assert conn |> get_resp_header("set-cookie") |> Enum.join() =~
+                 "max-age=#{max_age}"
+      end
+    end
+
+    property "uses preferably the auth_cookie max age set in options", %{
+      conn: conn
+    } do
+      check all env_max_age <- integer(1..@three_months),
+                opt_max_age <- integer(1..@three_months),
+                opt_max_age != env_max_age do
+        Application.put_env(:expected, :cookie_max_age, env_max_age)
+
+        conn =
+          conn
+          |> put_session(:current_user, %{username: "user"})
+          |> register_login(cookie_max_age: opt_max_age)
+          |> send_resp(:ok, "")
+
+        assert conn |> get_resp_header("set-cookie") |> Enum.join() =~
+                 "max-age=#{opt_max_age}"
+
+        refute conn |> get_resp_header("set-cookie") |> Enum.join() =~
+                 "max-age=#{env_max_age}"
+      end
     end
 
     ## Problems
