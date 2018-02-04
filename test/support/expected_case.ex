@@ -6,10 +6,12 @@ defmodule Expected.Case do
   defmacro __using__(_opts) do
     quote do
       use ExUnit.Case
+      use ExUnitProperties
       use Plug.Test
 
       alias Expected.Login
       alias Expected.MemoryStore
+      alias Plug.Session.ETS, as: SessionStore
 
       @server :test_store
       @auth_cookie "_test_auth"
@@ -63,6 +65,56 @@ defmodule Expected.Case do
         :ets.new(@ets_table, [:named_table, :public])
         MemoryStore.start_link()
         :ok
+      end
+
+      # Username generator
+      defp username, do: string(:ascii, min_length: 3)
+
+      # Login generator
+      defp login(opts \\ []) do
+        now = System.os_time()
+
+        min_age =
+          opts
+          |> Keyword.get(:min_age, 0)
+          |> System.convert_time_unit(:seconds, :native)
+
+        max_age =
+          opts
+          |> Keyword.get(:max_age, now)
+          |> System.convert_time_unit(:seconds, :native)
+
+        gen all gen_username <- username(),
+                timestamp <- integer((now - max_age)..(now - min_age)),
+                ip <- {byte(), byte(), byte(), byte()},
+                useragent <- string(:ascii) do
+          username = opts[:username] || gen_username
+
+          # Create a real session only if opts[:store] != false
+          sid =
+            if opts[:store] == false do
+              96 |> :crypto.strong_rand_bytes() |> Base.encode64()
+            else
+              SessionStore.put(nil, nil, %{username: username}, @ets_table)
+            end
+
+          login = %Login{
+            username: username,
+            serial: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
+            token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
+            sid: sid,
+            created_at: timestamp,
+            last_login: timestamp,
+            last_ip: ip,
+            last_useragent: useragent
+          }
+
+          unless opts[:store] == false do
+            :ok = MemoryStore.put(login, @server)
+          end
+
+          login
+        end
       end
     end
   end

@@ -1,53 +1,11 @@
 defmodule ExpectedTest do
   use Expected.Case
-  use ExUnitProperties
 
   alias Expected.ConfigurationError
-  alias Plug.Session.ETS, as: SessionStore
 
   #################
   # API functions #
   #################
-
-  # Username generator
-  defp username, do: string(:ascii, min_length: 3)
-
-  # Login generator
-  defp login(opts \\ []) do
-    now = System.os_time()
-    min_age = System.convert_time_unit(opts[:min_age] || 0, :seconds, :native)
-    max_age = System.convert_time_unit(opts[:max_age] || now, :seconds, :native)
-
-    gen all gen_username <- username(),
-            timestamp <- integer((now - max_age)..(now - min_age)),
-            ip <- {byte(), byte(), byte(), byte()},
-            useragent <- string(:ascii) do
-      username = opts[:username] || gen_username
-
-      # Create a real session only if opts[:store] != false
-      sid =
-        if opts[:store] == false,
-          do: 96 |> :crypto.strong_rand_bytes() |> Base.encode64(),
-          else: SessionStore.put(nil, nil, %{username: username}, @ets_table)
-
-      login = %Login{
-        username: username,
-        serial: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
-        token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
-        sid: sid,
-        created_at: timestamp,
-        last_login: timestamp,
-        last_ip: ip,
-        last_useragent: useragent
-      }
-
-      unless opts[:store] == false do
-        :ok = MemoryStore.put(login, @server)
-      end
-
-      login
-    end
-  end
 
   describe "unexpected_token?/1" do
     test "returns true if there has been an authentication attempt with a bad
