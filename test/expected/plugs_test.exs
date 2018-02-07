@@ -18,12 +18,9 @@ defmodule Expected.PlugsTest do
     table: @ets_table
   ]
 
-  @not_loaded_user %NotLoadedUser{username: @username}
-
   @encoded_username Base.encode64(@username)
   @auth_cookie_content "#{@encoded_username}.#{@serial}.#{@token}"
   @no_login_cookie "#{Base.encode64("some_user")}.some_serial.some_token"
-  @bad_token_cookie "#{@encoded_username}.#{@serial}.bad_token"
 
   setup do
     setup_stores()
@@ -48,6 +45,10 @@ defmodule Expected.PlugsTest do
   defp with_login(%{conn: conn}) do
     :ok = MemoryStore.put(@login, @server)
     %{conn: conn}
+  end
+
+  defp auth_cookie(%Login{username: username, serial: serial, token: token}) do
+    "#{Base.encode64(username)}.#{serial}.#{token}"
   end
 
   describe "register_login/2" do
@@ -97,8 +98,7 @@ defmodule Expected.PlugsTest do
         assert [%Login{} = login] =
                  MemoryStore.list_user_logins(username, @server)
 
-        assert conn.cookies[@auth_cookie] ==
-                 "#{Base.encode64(username)}.#{login.serial}.#{login.token}"
+        assert conn.cookies[@auth_cookie] == auth_cookie(login)
       end
     end
 
@@ -278,121 +278,136 @@ defmodule Expected.PlugsTest do
   end
 
   describe "authenticate/2" do
-    setup [:with_login]
-
     ## Standard cases
 
-    test "assigns :authenticated and :current_user if the session is already
-          authenticated", %{conn: conn} do
-      conn =
-        conn
-        |> fetch_session()
-        |> put_session(:authenticated, true)
-        |> put_session(:current_user, %{username: "user"})
-        |> authenticate()
+    property "assigns :authenticated and :current_user if the session is already
+              authenticated", %{conn: conn} do
+      check all username <- username() do
+        conn =
+          conn
+          |> fetch_session()
+          |> put_session(:authenticated, true)
+          |> put_session(:current_user, %{username: username})
+          |> authenticate()
 
-      assert conn.assigns[:authenticated] == true
-      assert conn.assigns[:current_user] == %{username: "user"}
+        assert conn.assigns[:authenticated] == true
+        assert conn.assigns[:current_user] == %{username: username}
+      end
     end
 
-    test "does not process the auth_cookie if the session is already
-          authenticated", %{conn: conn} do
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-        |> fetch_session()
-        |> put_session(:authenticated, true)
-        |> put_session(:current_user, %{username: "other_user"})
-        |> authenticate()
+    property "does not process the auth_cookie if the session is already
+              authenticated", %{conn: conn} do
+      check all login <- login(),
+                other_username <- username() do
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> put_session(:authenticated, true)
+          |> put_session(:current_user, %{username: other_username})
+          |> authenticate()
 
-      assert conn.assigns[:authenticated] == true
-      assert conn.assigns[:current_user] == %{username: "other_user"}
+        assert conn.assigns[:authenticated] == true
+        assert conn.assigns[:current_user] == %{username: other_username}
+      end
     end
 
-    test "authenticates from the auth_cookie if the session is not yet
-          authenticated", %{conn: conn} do
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-        |> fetch_session()
-        |> authenticate()
+    property "authenticates from the auth_cookie if the session is not yet
+              authenticated", %{conn: conn} do
+      check all login <- login() do
+        not_loaded_user = %NotLoadedUser{username: login.username}
 
-      assert conn.assigns[:authenticated] == true
-      assert conn.assigns[:current_user] == @not_loaded_user
-      assert get_session(conn, :authenticated) == true
-      assert get_session(conn, :current_user) == @not_loaded_user
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> authenticate()
+
+        assert conn.assigns[:authenticated] == true
+        assert conn.assigns[:current_user] == not_loaded_user
+        assert get_session(conn, :authenticated) == true
+        assert get_session(conn, :current_user) == not_loaded_user
+      end
     end
 
-    test "updates the login and the cookie if the session is not yet
-          authenticated and the current cookie is valid", %{conn: conn} do
-      conn =
+    property "updates the login and the cookie if the session is not yet
+              authenticated and the current cookie is valid", %{conn: conn} do
+      check all login <- login() do
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> authenticate()
+          |> send_resp(:ok, "")
+
+        [new_login] = MemoryStore.list_user_logins(login.username, @server)
+
+        assert new_login.serial == login.serial
+        assert new_login.token != login.token
+        assert new_login.sid != login.sid
+        assert new_login.created_at == login.created_at
+        assert new_login.last_login > login.last_login
+        assert conn.cookies[@auth_cookie] == auth_cookie(new_login)
+      end
+    end
+
+    property "deletes the old session from the store when authenticating from an
+              auth_cookie", %{conn: conn} do
+      check all login <- login(),
+                key <- binary(min_length: 1),
+                value <- binary(min_length: 1) do
+        session_conn =
+          conn
+          |> fetch_session()
+          |> put_session(key, value)
+          |> send_resp(:ok, "")
+
+        sid = session_conn.cookies[@session_cookie]
+
+        assert {_, %{^key => ^value}} = SessionStore.get(nil, sid, @ets_table)
+
+        login = %{login | sid: sid}
+        :ok = MemoryStore.put(login, @server)
+
         conn
-        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
+        |> put_req_cookie(@auth_cookie, auth_cookie(login))
         |> fetch_session()
         |> authenticate()
         |> send_resp(:ok, "")
 
-      [login] = MemoryStore.list_user_logins(@username, @server)
-
-      assert login.serial == @serial
-      assert login.token != @token
-      assert login.sid != @sid
-      assert login.created_at == @login.created_at
-      assert login.last_login > @login.last_login
-
-      assert conn.cookies[@auth_cookie] ==
-               "#{Base.encode64(login.username)}.#{login.serial}.#{login.token}"
+        assert SessionStore.get(nil, sid, @ets_table) == {nil, %{}}
+      end
     end
 
-    test "deletes the old session from the store when authenticating from an
-          auth_cookie", %{conn: conn} do
-      session_conn =
-        conn
-        |> fetch_session()
-        |> put_session("a", "b")
-        |> send_resp(:ok, "")
-
-      sid = session_conn.cookies[@session_cookie]
-
-      assert {_, %{"a" => "b"}} = SessionStore.get(nil, sid, @ets_table)
-
-      login = %{@login | sid: sid}
-      :ok = MemoryStore.put(login, @server)
-
-      conn
-      |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-      |> fetch_session()
-      |> authenticate()
-      |> send_resp(:ok, "")
-
-      assert SessionStore.get(nil, sid, @ets_table) == {nil, %{}}
-    end
-
-    test "creates a new session when authenticating from an auth_cookie", %{
+    property "creates a new session when authenticating from an auth_cookie", %{
       conn: conn
     } do
-      conn1 =
-        conn
-        |> fetch_session()
-        |> put_session(:test, :test)
-        |> send_resp(:ok, "")
+      check all login <- login(),
+                key <- binary(min_length: 1),
+                value <- binary(min_length: 1) do
+        conn1 =
+          conn
+          |> fetch_session()
+          |> put_session(key, value)
+          |> send_resp(:ok, "")
 
-      sid1 = conn1.cookies[@session_cookie]
+        sid1 = conn1.cookies[@session_cookie]
 
-      login = %{@login | sid: sid1}
-      :ok = MemoryStore.put(login, @server)
+        login = %{login | sid: sid1}
+        :ok = MemoryStore.put(login, @server)
 
-      conn2 =
-        conn
-        |> recycle_cookies(conn1)
-        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-        |> fetch_session()
-        |> authenticate()
-        |> send_resp(:ok, "")
+        conn2 =
+          conn
+          |> recycle_cookies(conn1)
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> authenticate()
+          |> send_resp(:ok, "")
 
-      sid2 = conn2.cookies[@session_cookie]
+        sid2 = conn2.cookies[@session_cookie]
 
-      assert sid1 != sid2
+        assert sid1 != sid2
+      end
     end
 
     test "does nothing if the session is not authenticated and there is no
@@ -408,203 +423,268 @@ defmodule Expected.PlugsTest do
 
     ## Configuration
 
-    test "uses the authenticated field set in the application environment", %{
-      conn: conn
-    } do
-      Application.put_env(:expected, :plug_config, authenticated: :logged_in)
+    property "uses the authenticated field set in the application environment",
+             %{conn: conn} do
+      check all env_field <- atom(:alphanumeric),
+                env_field != :authenticated,
+                login <- login() do
+        Application.put_env(:expected, :plug_config, authenticated: env_field)
 
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-        |> fetch_session()
-        |> authenticate()
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> authenticate()
 
-      assert conn.assigns[:authenticated] == nil
-      assert conn.assigns[:logged_in] == true
-      assert conn.assigns[:current_user] == @not_loaded_user
-      assert get_session(conn, :authenticated) == nil
-      assert get_session(conn, :logged_in) == true
-      assert get_session(conn, :current_user) == @not_loaded_user
+        not_loaded_user = %NotLoadedUser{username: login.username}
+
+        assert conn.assigns[:authenticated] == nil
+        assert conn.assigns[env_field] == true
+        assert conn.assigns[:current_user] == not_loaded_user
+        assert get_session(conn, :authenticated) == nil
+        assert get_session(conn, env_field) == true
+        assert get_session(conn, :current_user) == not_loaded_user
+      end
     end
 
-    test "uses preferably the authenticated field set in options", %{
+    property "uses preferably the authenticated field set in options", %{
       conn: conn
     } do
-      Application.put_env(:expected, :plug_config, authenticated: :logged_in)
+      check all env_field <- atom(:alphanumeric),
+                opt_field <- atom(:alphanumeric),
+                env_field != :authenticated,
+                opt_field != :authenticated,
+                opt_field != env_field,
+                login <- login() do
+        Application.put_env(:expected, :plug_config, authenticated: env_field)
 
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-        |> fetch_session()
-        |> authenticate(authenticated: :auth?)
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> authenticate(authenticated: opt_field)
 
-      assert conn.assigns[:authenticated] == nil
-      assert conn.assigns[:logged_in] == nil
-      assert conn.assigns[:auth?] == true
-      assert conn.assigns[:current_user] == @not_loaded_user
-      assert get_session(conn, :authenticated) == nil
-      assert get_session(conn, :logged_in) == nil
-      assert get_session(conn, :auth?) == true
-      assert get_session(conn, :current_user) == @not_loaded_user
+        not_loaded_user = %NotLoadedUser{username: login.username}
+
+        assert conn.assigns[:authenticated] == nil
+        assert conn.assigns[env_field] == nil
+        assert conn.assigns[opt_field] == true
+        assert conn.assigns[:current_user] == not_loaded_user
+        assert get_session(conn, :authenticated) == nil
+        assert get_session(conn, env_field) == nil
+        assert get_session(conn, opt_field) == true
+        assert get_session(conn, :current_user) == not_loaded_user
+      end
     end
 
-    test "uses the current_user set in the application environment", %{
+    property "uses the current_user set in the application environment", %{
       conn: conn
     } do
-      Application.put_env(:expected, :plug_config, current_user: :user_id)
+      check all env_field <- atom(:alphanumeric),
+                env_field != :current_user,
+                login <- login() do
+        Application.put_env(:expected, :plug_config, current_user: env_field)
 
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-        |> fetch_session()
-        |> authenticate()
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> authenticate()
 
-      assert conn.assigns[:authenticated] == true
-      assert conn.assigns[:current_user] == nil
-      assert conn.assigns[:user_id] == @not_loaded_user
-      assert get_session(conn, :authenticated) == true
-      assert get_session(conn, :current_user) == nil
-      assert get_session(conn, :user_id) == @not_loaded_user
+        not_loaded_user = %NotLoadedUser{username: login.username}
+
+        assert conn.assigns[:authenticated] == true
+        assert conn.assigns[:current_user] == nil
+        assert conn.assigns[env_field] == not_loaded_user
+        assert get_session(conn, :authenticated) == true
+        assert get_session(conn, :current_user) == nil
+        assert get_session(conn, env_field) == not_loaded_user
+      end
     end
 
-    test "uses preferably the current_user set in options", %{conn: conn} do
-      Application.put_env(:expected, :plug_config, current_user: :user_id)
+    property "uses preferably the current_user set in options", %{conn: conn} do
+      check all env_field <- atom(:alphanumeric),
+                opt_field <- atom(:alphanumeric),
+                env_field != :current_user,
+                opt_field != :current_user,
+                opt_field != env_field,
+                login <- login() do
+        Application.put_env(:expected, :plug_config, current_user: env_field)
 
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-        |> fetch_session()
-        |> authenticate(current_user: :id)
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> authenticate(current_user: opt_field)
 
-      assert conn.assigns[:authenticated] == true
-      assert conn.assigns[:current_user] == nil
-      assert conn.assigns[:user_id] == nil
-      assert conn.assigns[:id] == @not_loaded_user
-      assert get_session(conn, :authenticated) == true
-      assert get_session(conn, :current_user) == nil
-      assert get_session(conn, :user_id) == nil
-      assert get_session(conn, :id) == @not_loaded_user
+        not_loaded_user = %NotLoadedUser{username: login.username}
+
+        assert conn.assigns[:authenticated] == true
+        assert conn.assigns[:current_user] == nil
+        assert conn.assigns[env_field] == nil
+        assert conn.assigns[opt_field] == not_loaded_user
+        assert get_session(conn, :authenticated) == true
+        assert get_session(conn, :current_user) == nil
+        assert get_session(conn, env_field) == nil
+        assert get_session(conn, opt_field) == not_loaded_user
+      end
     end
 
-    test "uses the auth_cookie max age set in the application environment", %{
+    property "uses the auth_cookie max age set in the application environment",
+             %{conn: conn} do
+      check all max_age <- integer(1..@three_months),
+                login <- login() do
+        Application.put_env(:expected, :cookie_max_age, max_age)
+
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> authenticate()
+          |> send_resp(:ok, "")
+
+        assert conn |> get_resp_header("set-cookie") |> Enum.join() =~
+                 "max-age=#{max_age}"
+      end
+    end
+
+    property "uses preferably the auth_cookie max age set in options", %{
       conn: conn
     } do
-      Application.put_env(:expected, :cookie_max_age, 7)
+      check all env_max_age <- integer(1..@three_months),
+                opt_max_age <- integer(1..@three_months),
+                opt_max_age != env_max_age,
+                login <- login() do
+        Application.put_env(:expected, :cookie_max_age, env_max_age)
 
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-        |> fetch_session()
-        |> authenticate()
-        |> send_resp(:ok, "")
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> authenticate(cookie_max_age: opt_max_age)
+          |> send_resp(:ok, "")
 
-      assert conn |> get_resp_header("set-cookie") |> Enum.join() =~ "max-age=7"
-    end
+        assert conn |> get_resp_header("set-cookie") |> Enum.join() =~
+                 "max-age=#{opt_max_age}"
 
-    test "uses preferably the auth_cookie max age set in options", %{
-      conn: conn
-    } do
-      Application.put_env(:expected, :cookie_max_age, 7)
-
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-        |> fetch_session()
-        |> authenticate(cookie_max_age: 9)
-        |> send_resp(:ok, "")
-
-      assert conn |> get_resp_header("set-cookie") |> Enum.join() =~ "max-age=9"
-      refute conn |> get_resp_header("set-cookie") |> Enum.join() =~ "max-age=7"
+        refute conn |> get_resp_header("set-cookie") |> Enum.join() =~
+                 "max-age=#{env_max_age}"
+      end
     end
 
     ## Problems
 
-    test "does not authenticate if the auth_cookie is invalid", %{conn: conn} do
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, "something")
-        |> fetch_session()
-        |> authenticate()
-
-      assert conn.assigns[:authenticated] == nil
-      assert conn.assigns[:current_user] == nil
-      assert get_session(conn, :authenticated) == nil
-      assert get_session(conn, :current_user) == nil
-    end
-
-    test "deletes the auth_cookie if it is invalid", %{conn: conn} do
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, "something")
-        |> fetch_session()
-        |> authenticate()
-        |> send_resp(:ok, "")
-
-      assert conn.cookies[@auth_cookie] == nil
-    end
-
-    test "does not authenticate if the auth_cookie does not reference a valid
-          login", %{conn: conn} do
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @no_login_cookie)
-        |> fetch_session()
-        |> authenticate()
-
-      assert conn.assigns[:authenticated] == nil
-      assert conn.assigns[:current_user] == nil
-      assert get_session(conn, :authenticated) == nil
-      assert get_session(conn, :current_user) == nil
-    end
-
-    test "deletes the auth_cookie if it does not reference a valid login", %{
+    property "does not authenticate if the auth_cookie is invalid", %{
       conn: conn
     } do
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @no_login_cookie)
-        |> fetch_session()
-        |> authenticate()
-        |> send_resp(:ok, "")
+      check all invalid_cookie <- string(:ascii) do
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, invalid_cookie)
+          |> fetch_session()
+          |> authenticate()
 
-      assert conn.cookies[@auth_cookie] == nil
+        assert conn.assigns[:authenticated] == nil
+        assert conn.assigns[:current_user] == nil
+        assert get_session(conn, :authenticated) == nil
+        assert get_session(conn, :current_user) == nil
+      end
     end
 
-    test "puts a flag if there is a valid serial but the token is not the
+    property "deletes the auth_cookie if it is invalid", %{conn: conn} do
+      check all invalid_cookie <- string(:ascii) do
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, invalid_cookie)
+          |> fetch_session()
+          |> authenticate()
+          |> send_resp(:ok, "")
+
+        assert conn.cookies[@auth_cookie] == nil
+      end
+    end
+
+    property "does not authenticate if the auth_cookie does not reference a
+              valid login", %{conn: conn} do
+      check all login <- login(store: false) do
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> authenticate()
+
+        assert conn.assigns[:authenticated] == nil
+        assert conn.assigns[:current_user] == nil
+        assert get_session(conn, :authenticated) == nil
+        assert get_session(conn, :current_user) == nil
+      end
+    end
+
+    property "deletes the auth_cookie if it does not reference a valid login",
+             %{conn: conn} do
+      check all login <- login(store: false) do
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> authenticate()
+          |> send_resp(:ok, "")
+
+        assert conn.cookies[@auth_cookie] == nil
+      end
+    end
+
+    property "puts a flag if there is a valid serial but the token is not the
           expected one", %{conn: conn} do
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @bad_token_cookie)
-        |> fetch_session()
-        |> authenticate()
+      check all login <- login() do
+        token = 48 |> :crypto.strong_rand_bytes() |> Base.encode64()
 
-      assert conn.private[:unexpected_token] == true
-      assert conn.assigns[:authenticated] == nil
-      assert conn.assigns[:current_user] == nil
-      assert get_session(conn, :authenticated) == nil
-      assert get_session(conn, :current_user) == nil
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(%{login | token: token}))
+          |> fetch_session()
+          |> authenticate()
+
+        assert conn.private[:unexpected_token] == true
+        assert conn.assigns[:authenticated] == nil
+        assert conn.assigns[:current_user] == nil
+        assert get_session(conn, :authenticated) == nil
+        assert get_session(conn, :current_user) == nil
+      end
     end
 
-    test "deletes the auth_cookie if the token does not match", %{conn: conn} do
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @bad_token_cookie)
-        |> fetch_session()
-        |> authenticate()
-        |> send_resp(:ok, "")
-
-      assert conn.cookies[@auth_cookie] == nil
-    end
-
-    test "delete all the user’s logins if the token does not match", %{
+    property "deletes the auth_cookie if the token does not match", %{
       conn: conn
     } do
-      conn
-      |> put_req_cookie(@auth_cookie, @bad_token_cookie)
-      |> fetch_session()
-      |> authenticate()
+      check all login <- login() do
+        token = 48 |> :crypto.strong_rand_bytes() |> Base.encode64()
 
-      assert MemoryStore.list_user_logins("user", @server) == []
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(%{login | token: token}))
+          |> fetch_session()
+          |> authenticate()
+          |> send_resp(:ok, "")
+
+        assert conn.cookies[@auth_cookie] == nil
+      end
+    end
+
+    property "delete all the user’s logins if the token does not match", %{
+      conn: conn
+    } do
+      check all login <- login() do
+        token = 48 |> :crypto.strong_rand_bytes() |> Base.encode64()
+
+        assert MemoryStore.list_user_logins(login.username, @server) == [login]
+
+        conn
+        |> put_req_cookie(@auth_cookie, auth_cookie(%{login | token: token}))
+        |> fetch_session()
+        |> authenticate()
+
+        assert MemoryStore.list_user_logins(login.username, @server) == []
+      end
     end
 
     test "raises an exception if `Expected` has not been plugged" do
