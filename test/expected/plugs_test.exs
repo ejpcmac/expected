@@ -128,11 +128,15 @@ defmodule Expected.PlugsTest do
     property "uses preferably the current_user set in options", %{conn: conn} do
       check all env_field <- atom(:alphanumeric),
                 opt_field <- atom(:alphanumeric),
-                opt_field != env_field != :current_user,
+                env_field != :current_user,
+                opt_field != :current_user,
+                opt_field != env_field,
                 username <- username(),
                 env_username <- username(),
                 opt_username <- username(),
-                opt_username != env_username != username do
+                env_username != username,
+                opt_username != username,
+                opt_username != env_username do
         Application.put_env(:expected, :plug_config, current_user: env_field)
 
         conn
@@ -177,11 +181,15 @@ defmodule Expected.PlugsTest do
     } do
       check all env_field <- atom(:alphanumeric),
                 opt_field <- atom(:alphanumeric),
-                opt_field != env_field != :username,
+                env_field != :username,
+                opt_field != :username,
+                opt_field != env_field,
                 username <- username(),
                 env_username <- username(),
                 opt_username <- username(),
-                opt_username != env_username != username do
+                env_username != username,
+                opt_username != username,
+                opt_username != env_username do
         Application.put_env(:expected, :plug_config, username: env_field)
 
         user =
