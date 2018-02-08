@@ -18,10 +18,6 @@ defmodule Expected.PlugsTest do
     table: @ets_table
   ]
 
-  @encoded_username Base.encode64(@username)
-  @auth_cookie_content "#{@encoded_username}.#{@serial}.#{@token}"
-  @no_login_cookie "#{Base.encode64("some_user")}.some_serial.some_token"
-
   setup do
     setup_stores()
 
@@ -40,11 +36,6 @@ defmodule Expected.PlugsTest do
 
   defp with_session(%{conn: conn}) do
     %{conn: fetch_session(conn)}
-  end
-
-  defp with_login(%{conn: conn}) do
-    :ok = MemoryStore.put(@login, @server)
-    %{conn: conn}
   end
 
   defp auth_cookie(%Login{username: username, serial: serial, token: token}) do
@@ -700,77 +691,95 @@ defmodule Expected.PlugsTest do
   end
 
   describe "logout/2" do
-    setup [:with_login]
-
     ## Standard cases
 
-    test "deletes the login if there is a valid auth_cookie", %{conn: conn} do
-      conn
-      |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-      |> fetch_session()
-      |> logout()
+    property "deletes the login if there is a valid auth_cookie", %{
+      conn: conn
+    } do
+      check all login <- login() do
+        assert MemoryStore.list_user_logins(login.username, @server) == [login]
 
-      assert MemoryStore.list_user_logins("user", @server) == []
-    end
-
-    test "deletes the session if there is valid auth_cookie", %{conn: conn} do
-      SessionStore.put(nil, @sid, %{"a" => "b"}, @ets_table)
-
-      conn
-      |> put_req_cookie(@auth_cookie, @auth_cookie_content)
-      |> fetch_session()
-      |> logout()
-
-      assert SessionStore.get(nil, @sid, @ets_table) == {nil, %{}}
-    end
-
-    test "deletes the auth cookie", %{conn: conn} do
-      conn =
         conn
-        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
+        |> put_req_cookie(@auth_cookie, auth_cookie(login))
         |> fetch_session()
         |> logout()
-        |> send_resp(:ok, "")
 
-      assert conn.cookies[@auth_cookie] == nil
+        assert MemoryStore.list_user_logins(login.username, @server) == []
+      end
     end
 
-    test "deletes the session cookie", %{conn: conn} do
-      conn =
+    property "deletes the session if there is valid auth_cookie", %{
+      conn: conn
+    } do
+      check all login <- login() do
+        assert SessionStore.get(nil, login.sid, @ets_table) == {
+                 login.sid,
+                 %{username: login.username}
+               }
+
         conn
-        |> put_req_cookie(@session_cookie, @sid)
-        |> put_req_cookie(@auth_cookie, @auth_cookie_content)
+        |> put_req_cookie(@auth_cookie, auth_cookie(login))
         |> fetch_session()
         |> logout()
-        |> send_resp(:ok, "")
 
-      assert conn.cookies[@session_cookie] == nil
+        assert SessionStore.get(nil, login.sid, @ets_table) == {nil, %{}}
+      end
+    end
+
+    property "deletes the auth cookie", %{conn: conn} do
+      check all login <- login() do
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> logout()
+          |> send_resp(:ok, "")
+
+        assert conn.cookies[@auth_cookie] == nil
+      end
+    end
+
+    property "deletes the session cookie", %{conn: conn} do
+      check all login <- login() do
+        conn =
+          conn
+          |> put_req_cookie(@session_cookie, login.sid)
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> logout()
+          |> send_resp(:ok, "")
+
+        assert conn.cookies[@session_cookie] == nil
+      end
     end
 
     ## Problems
 
-    test "deletes the auth_cookie if it is invalid", %{conn: conn} do
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, "something")
-        |> fetch_session()
-        |> logout()
-        |> send_resp(:ok, "")
+    property "deletes the auth_cookie if it is invalid", %{conn: conn} do
+      check all invalid_cookie <- string(:ascii) do
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, invalid_cookie)
+          |> fetch_session()
+          |> logout()
+          |> send_resp(:ok, "")
 
-      assert conn.cookies[@auth_cookie] == nil
+        assert conn.cookies[@auth_cookie] == nil
+      end
     end
 
-    test "deletes the auth_cookie if it does not reference a valid login", %{
-      conn: conn
-    } do
-      conn =
-        conn
-        |> put_req_cookie(@auth_cookie, @no_login_cookie)
-        |> fetch_session()
-        |> logout()
-        |> send_resp(:ok, "")
+    property "deletes the auth_cookie if it does not reference a valid login",
+             %{conn: conn} do
+      check all login <- login(store: false) do
+        conn =
+          conn
+          |> put_req_cookie(@auth_cookie, auth_cookie(login))
+          |> fetch_session()
+          |> logout()
+          |> send_resp(:ok, "")
 
-      assert conn.cookies[@auth_cookie] == nil
+        assert conn.cookies[@auth_cookie] == nil
+      end
     end
 
     test "raises an exception if `Expected` has not been plugged" do
