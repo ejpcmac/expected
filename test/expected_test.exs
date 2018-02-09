@@ -31,8 +31,9 @@ defmodule ExpectedTest do
     property "lists logins for the given user" do
       check all user <- username(),
                 length <- integer(1..5),
-                user_logins <- list_of(login(username: user), length: length),
-                _other_logins <- list_of(login(), length: 5) do
+                user_logins <-
+                  uniq_list_of(login(username: user), length: length),
+                _other_logins <- uniq_list_of(login(), length: 5) do
         logins = Expected.list_user_logins(user)
 
         assert length(logins) == length
@@ -77,8 +78,8 @@ defmodule ExpectedTest do
 
     property "deletes all user logins for the given username" do
       check all user <- username(),
-                _user_logins <- list_of(login(username: user), length: 5),
-                _other_logins <- list_of(login(), length: 5) do
+                _user_logins <- uniq_list_of(login(username: user), length: 5),
+                _other_logins <- uniq_list_of(login(), length: 5) do
         assert user |> MemoryStore.list_user_logins(@server) |> length() == 5
         assert :ok = Expected.delete_all_user_logins(user)
         assert MemoryStore.list_user_logins(user, @server) == []
@@ -87,8 +88,9 @@ defmodule ExpectedTest do
 
     property "deletes the sessions associated with the logins if they exist" do
       check all username <- username(),
-                user_logins <- list_of(login(username: username), length: 5),
-                _other_logins <- list_of(login(), length: 5) do
+                user_logins <-
+                  uniq_list_of(login(username: username), length: 5),
+                _other_logins <- uniq_list_of(login(), length: 5) do
         Enum.each(user_logins, fn %Login{sid: sid} ->
           assert SessionStore.get(nil, sid, @ets_table) ==
                    {sid, %{username: username}}
@@ -114,8 +116,13 @@ defmodule ExpectedTest do
 
     property "deletes the logins older than max_age" do
       check all max_age <- integer(1..@three_months),
-                recent_logins <- list_of(login(max_age: max_age), length: 5),
-                old_logins <- list_of(login(min_age: max_age), length: 5) do
+                recent_logins <-
+                  uniq_list_of(login(max_age: max_age), length: 5),
+                old_logins <-
+                  uniq_list_of(
+                    login(min_age: max_age),
+                    length: 5
+                  ) do
         assert :ok = Expected.clean_old_logins(max_age)
 
         Enum.each(recent_logins, fn %{username: username, serial: serial} ->
@@ -131,8 +138,13 @@ defmodule ExpectedTest do
 
     property "cleans the sessions associated with the old logins" do
       check all max_age <- integer(1..@three_months),
-                recent_logins <- list_of(login(max_age: max_age), length: 5),
-                old_logins <- list_of(login(min_age: max_age), length: 5) do
+                recent_logins <-
+                  uniq_list_of(login(max_age: max_age), length: 5),
+                old_logins <-
+                  uniq_list_of(
+                    login(min_age: max_age),
+                    length: 5
+                  ) do
         assert :ok = Expected.clean_old_logins(max_age)
 
         Enum.each(recent_logins, fn %Login{username: username, sid: sid} ->
