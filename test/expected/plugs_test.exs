@@ -290,6 +290,8 @@ defmodule Expected.PlugsTest do
               authenticated", %{conn: conn} do
       check all login <- login(),
                 other_username <- username() do
+        clear_store_and_put_logins(login)
+
         conn =
           conn
           |> put_req_cookie(@auth_cookie, auth_cookie(login))
@@ -306,6 +308,8 @@ defmodule Expected.PlugsTest do
     property "authenticates from the auth_cookie if the session is not yet
               authenticated", %{conn: conn} do
       check all login <- login() do
+        clear_store_and_put_logins(login)
+
         not_loaded_user = %NotLoadedUser{username: login.username}
 
         conn =
@@ -324,6 +328,8 @@ defmodule Expected.PlugsTest do
     property "updates the login and the cookie if the session is not yet
               authenticated and the current cookie is valid", %{conn: conn} do
       check all login <- login() do
+        clear_store_and_put_logins(login)
+
         conn =
           conn
           |> put_req_cookie(@auth_cookie, auth_cookie(login))
@@ -347,6 +353,8 @@ defmodule Expected.PlugsTest do
       check all login <- login(),
                 key <- binary(min_length: 1),
                 value <- binary(min_length: 1) do
+        clear_store_and_put_logins(login)
+
         session_conn =
           conn
           |> fetch_session()
@@ -376,6 +384,8 @@ defmodule Expected.PlugsTest do
       check all login <- login(),
                 key <- binary(min_length: 1),
                 value <- binary(min_length: 1) do
+        clear_store_and_put_logins(login)
+
         conn1 =
           conn
           |> fetch_session()
@@ -419,6 +429,8 @@ defmodule Expected.PlugsTest do
       check all env_field <- atom(:alphanumeric),
                 env_field != :authenticated,
                 login <- login() do
+        clear_store_and_put_logins(login)
+
         Application.put_env(:expected, :plug_config, authenticated: env_field)
 
         conn =
@@ -447,6 +459,8 @@ defmodule Expected.PlugsTest do
                 opt_field != :authenticated,
                 opt_field != env_field,
                 login <- login() do
+        clear_store_and_put_logins(login)
+
         Application.put_env(:expected, :plug_config, authenticated: env_field)
 
         conn =
@@ -474,6 +488,8 @@ defmodule Expected.PlugsTest do
       check all env_field <- atom(:alphanumeric),
                 env_field != :current_user,
                 login <- login() do
+        clear_store_and_put_logins(login)
+
         Application.put_env(:expected, :plug_config, current_user: env_field)
 
         conn =
@@ -500,6 +516,8 @@ defmodule Expected.PlugsTest do
                 opt_field != :current_user,
                 opt_field != env_field,
                 login <- login() do
+        clear_store_and_put_logins(login)
+
         Application.put_env(:expected, :plug_config, current_user: env_field)
 
         conn =
@@ -525,6 +543,8 @@ defmodule Expected.PlugsTest do
              %{conn: conn} do
       check all max_age <- integer(1..@three_months),
                 login <- login() do
+        clear_store_and_put_logins(login)
+
         Application.put_env(:expected, :cookie_max_age, max_age)
 
         conn =
@@ -546,6 +566,8 @@ defmodule Expected.PlugsTest do
                 opt_max_age <- integer(1..@three_months),
                 opt_max_age != env_max_age,
                 login <- login() do
+        clear_store_and_put_logins(login)
+
         Application.put_env(:expected, :cookie_max_age, env_max_age)
 
         conn =
@@ -597,7 +619,7 @@ defmodule Expected.PlugsTest do
 
     property "does not authenticate if the auth_cookie does not reference a
               valid login", %{conn: conn} do
-      check all login <- login(store: false) do
+      check all login <- login() do
         conn =
           conn
           |> put_req_cookie(@auth_cookie, auth_cookie(login))
@@ -613,7 +635,7 @@ defmodule Expected.PlugsTest do
 
     property "deletes the auth_cookie if it does not reference a valid login",
              %{conn: conn} do
-      check all login <- login(store: false) do
+      check all login <- login() do
         conn =
           conn
           |> put_req_cookie(@auth_cookie, auth_cookie(login))
@@ -628,6 +650,8 @@ defmodule Expected.PlugsTest do
     property "puts a flag if there is a valid serial but the token is not the
           expected one", %{conn: conn} do
       check all login <- login() do
+        clear_store_and_put_logins(login)
+
         token = 48 |> :crypto.strong_rand_bytes() |> Base.encode64()
 
         conn =
@@ -648,6 +672,8 @@ defmodule Expected.PlugsTest do
       conn: conn
     } do
       check all login <- login() do
+        clear_store_and_put_logins(login)
+
         token = 48 |> :crypto.strong_rand_bytes() |> Base.encode64()
 
         conn =
@@ -665,6 +691,8 @@ defmodule Expected.PlugsTest do
       conn: conn
     } do
       check all login <- login() do
+        clear_store_and_put_logins(login)
+
         token = 48 |> :crypto.strong_rand_bytes() |> Base.encode64()
 
         assert MemoryStore.list_user_logins(login.username, @server) == [login]
@@ -697,6 +725,8 @@ defmodule Expected.PlugsTest do
       conn: conn
     } do
       check all login <- login() do
+        clear_store_and_put_logins(login)
+
         assert MemoryStore.list_user_logins(login.username, @server) == [login]
 
         conn
@@ -712,6 +742,8 @@ defmodule Expected.PlugsTest do
       conn: conn
     } do
       check all login <- login() do
+        clear_store_and_put_logins(login)
+
         assert SessionStore.get(nil, login.sid, @ets_table) == {
                  login.sid,
                  %{username: login.username}
@@ -770,7 +802,7 @@ defmodule Expected.PlugsTest do
 
     property "deletes the auth_cookie if it does not reference a valid login",
              %{conn: conn} do
-      check all login <- login(store: false) do
+      check all login <- login() do
         conn =
           conn
           |> put_req_cookie(@auth_cookie, auth_cookie(login))

@@ -33,7 +33,9 @@ defmodule ExpectedTest do
                 length <- integer(1..5),
                 user_logins <-
                   uniq_list_of(login(username: user), length: length),
-                _other_logins <- uniq_list_of(login(), length: 5) do
+                other_logins <- uniq_list_of(login(), length: 5) do
+        clear_store_and_put_logins(user_logins ++ other_logins)
+
         logins = Expected.list_user_logins(user)
 
         assert length(logins) == length
@@ -49,7 +51,9 @@ defmodule ExpectedTest do
     setup [:setup_stores]
 
     property "deletes a login if it exists" do
-      check all %{username: username, serial: serial} <- login() do
+      check all %{username: username, serial: serial} = login <- login() do
+        clear_store_and_put_logins(login)
+
         assert {:ok, %Login{}} = MemoryStore.get(username, serial, @server)
         assert :ok = Expected.delete_login(username, serial)
         assert {:error, :no_login} = MemoryStore.get(username, serial, @server)
@@ -57,7 +61,10 @@ defmodule ExpectedTest do
     end
 
     property "deletes the session associated with the login if it exists" do
-      check all %{username: username, serial: serial, sid: sid} <- login() do
+      check all %{username: username, serial: serial, sid: sid} = login <-
+                  login() do
+        clear_store_and_put_logins(login)
+
         assert SessionStore.get(nil, sid, @ets_table) ==
                  {sid, %{username: username}}
 
@@ -67,7 +74,7 @@ defmodule ExpectedTest do
     end
 
     property "does nothing if the login does not exist" do
-      check all %{username: user, serial: serial} <- login(store: false) do
+      check all %{username: user, serial: serial} <- login() do
         assert :ok = Expected.delete_login(user, serial)
       end
     end
@@ -78,8 +85,10 @@ defmodule ExpectedTest do
 
     property "deletes all user logins for the given username" do
       check all user <- username(),
-                _user_logins <- uniq_list_of(login(username: user), length: 5),
-                _other_logins <- uniq_list_of(login(), length: 5) do
+                user_logins <- uniq_list_of(login(username: user), length: 5),
+                other_logins <- uniq_list_of(login(), length: 5) do
+        clear_store_and_put_logins(user_logins ++ other_logins)
+
         assert user |> MemoryStore.list_user_logins(@server) |> length() == 5
         assert :ok = Expected.delete_all_user_logins(user)
         assert MemoryStore.list_user_logins(user, @server) == []
@@ -90,7 +99,9 @@ defmodule ExpectedTest do
       check all username <- username(),
                 user_logins <-
                   uniq_list_of(login(username: username), length: 5),
-                _other_logins <- uniq_list_of(login(), length: 5) do
+                other_logins <- uniq_list_of(login(), length: 5) do
+        clear_store_and_put_logins(user_logins ++ other_logins)
+
         Enum.each(user_logins, fn %Login{sid: sid} ->
           assert SessionStore.get(nil, sid, @ets_table) ==
                    {sid, %{username: username}}
@@ -123,6 +134,8 @@ defmodule ExpectedTest do
                     login(min_age: max_age),
                     length: 5
                   ) do
+        clear_store_and_put_logins(recent_logins ++ old_logins)
+
         assert :ok = Expected.clean_old_logins(max_age)
 
         Enum.each(recent_logins, fn %{username: username, serial: serial} ->
@@ -145,6 +158,8 @@ defmodule ExpectedTest do
                     login(min_age: max_age),
                     length: 5
                   ) do
+        clear_store_and_put_logins(recent_logins ++ old_logins)
+
         assert :ok = Expected.clean_old_logins(max_age)
 
         Enum.each(recent_logins, fn %Login{username: username, sid: sid} ->

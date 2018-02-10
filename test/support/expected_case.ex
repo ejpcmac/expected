@@ -90,31 +90,37 @@ defmodule Expected.Case do
                 useragent <- string(:ascii) do
           username = opts[:username] || gen_username
 
-          # Create a real session only if opts[:store] != false
-          sid =
-            if opts[:store] == false do
-              96 |> :crypto.strong_rand_bytes() |> Base.encode64()
-            else
-              SessionStore.put(nil, nil, %{username: username}, @ets_table)
-            end
-
           login = %Login{
             username: username,
             serial: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
             token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
-            sid: sid,
+            sid: 96 |> :crypto.strong_rand_bytes() |> Base.encode64(),
             created_at: timestamp,
             last_login: timestamp,
             last_ip: ip,
             last_useragent: useragent
           }
 
-          unless opts[:store] == false do
-            :ok = MemoryStore.put(login, @server)
-          end
-
           login
         end
+      end
+
+      defp clear_store_and_put_logins(logins) do
+        clear_store()
+        put_logins(logins)
+      end
+
+      defp clear_store do
+        :ets.delete_all_objects(@ets_table)
+        MemoryStore.clear(@server)
+      end
+
+      defp put_logins(%Login{} = login), do: put_login(login)
+      defp put_logins(logins), do: Enum.each(logins, &put_login/1)
+
+      defp put_login(%Login{username: username, sid: sid} = login) do
+        SessionStore.put(nil, sid, %{username: username}, @ets_table)
+        MemoryStore.put(login, @server)
       end
     end
   end
