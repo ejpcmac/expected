@@ -73,4 +73,12 @@ defmodule Expected.MemoryStore do
   def clean_old_logins(max_age, server) do
     GenServer.call(server, {:clean_old_logins, max_age})
   end
+
+  @doc """
+  Clears all logins from the memory store.
+  """
+  @spec clear(pid()) :: :ok
+  def clear(server) do
+    GenServer.call(server, :clear)
+  end
 end

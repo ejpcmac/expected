@@ -68,6 +68,11 @@ defmodule Expected.MemoryStore.Server do
     {:reply, deleted_logins, state}
   end
 
+  @impl true
+  def handle_call(:clear, _from, _state) do
+    {:reply, :ok, %{}}
+  end
+
   @spec clean_old_logins(map(), integer()) :: {map(), [Login.t()]}
   defp clean_old_logins(logins, oldest_timestamp) do
     logins

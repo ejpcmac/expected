@@ -35,4 +35,14 @@ defmodule Expected.MemoryStoreTest do
                    fn -> init([]) end
     end
   end
+
+  describe "clear/1" do
+    setup [:init_store]
+
+    test "clears all logins from the memory store" do
+      assert list_user_logins("user", @server) == [@login1]
+      assert clear(@server) == :ok
+      assert list_user_logins("user", @server) == []
+    end
+  end
 end
