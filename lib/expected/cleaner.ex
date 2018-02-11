@@ -3,7 +3,7 @@ defmodule Expected.Cleaner do
   A module to automate old logins cleaning.
   """
 
-  use GenServer
+  use GenServer, start: {__MODULE__, :start_link, []}
 
   alias Expected.ConfigurationError
 
@@ -13,8 +13,7 @@ defmodule Expected.Cleaner do
   Starts the login cleaner.
   """
   @spec start_link :: GenServer.on_start()
-  @spec start_link(term()) :: GenServer.on_start()
-  def start_link(_args \\ nil) do
+  def start_link do
     max_age = Application.get_env(:expected, :cookie_max_age, @cookie_max_age)
     GenServer.start_link(__MODULE__, {timeout(), max_age})
   end
