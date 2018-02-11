@@ -76,4 +76,13 @@ defmodule Expected.MemoryStore do
   def clear(server) do
     GenServer.call(server, :clear)
   end
+
+  @doc false
+  @spec child_spec(term()) :: Supervisor.child_spec()
+  def child_spec(_opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, []}
+    }
+  end
 end

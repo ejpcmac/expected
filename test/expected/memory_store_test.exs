@@ -9,7 +9,8 @@ defmodule Expected.MemoryStoreTest do
   # Must be defined for Expected.Store.Test to work.
   defp init_store(_) do
     Application.put_env(:expected, :process_name, @server)
-    start_link()
+    start_supervised!(Expected.MemoryStore)
+
     %{opts: init(process_name: @server)}
   end
 
