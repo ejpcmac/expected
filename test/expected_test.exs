@@ -55,8 +55,8 @@ defmodule ExpectedTest do
         clear_store_and_put_logins(login)
 
         assert {:ok, %Login{}} = MemoryStore.get(username, serial, @server)
-        assert :ok = Expected.delete_login(username, serial)
-        assert {:error, :no_login} = MemoryStore.get(username, serial, @server)
+        assert Expected.delete_login(username, serial) == :ok
+        assert MemoryStore.get(username, serial, @server) == {:error, :no_login}
       end
     end
 
@@ -68,14 +68,14 @@ defmodule ExpectedTest do
         assert SessionStore.get(nil, sid, @ets_table) ==
                  {sid, %{username: username}}
 
-        assert :ok = Expected.delete_login(username, serial)
+        assert Expected.delete_login(username, serial) == :ok
         assert SessionStore.get(nil, sid, @ets_table) == {nil, %{}}
       end
     end
 
-    property "does nothing if the login does not exist" do
+    property "also works if the login does not exist" do
       check all %{username: user, serial: serial} <- login() do
-        assert :ok = Expected.delete_login(user, serial)
+        assert Expected.delete_login(user, serial) == :ok
       end
     end
   end
@@ -90,7 +90,7 @@ defmodule ExpectedTest do
         clear_store_and_put_logins(user_logins ++ other_logins)
 
         assert user |> MemoryStore.list_user_logins(@server) |> length() == 5
-        assert :ok = Expected.delete_all_user_logins(user)
+        assert Expected.delete_all_user_logins(user) == :ok
         assert MemoryStore.list_user_logins(user, @server) == []
       end
     end
@@ -107,7 +107,7 @@ defmodule ExpectedTest do
                    {sid, %{username: username}}
         end)
 
-        assert :ok = Expected.delete_all_user_logins(username)
+        assert Expected.delete_all_user_logins(username) == :ok
 
         Enum.each(user_logins, fn %Login{sid: sid} ->
           assert SessionStore.get(nil, sid, @ets_table) == {nil, %{}}
@@ -117,7 +117,7 @@ defmodule ExpectedTest do
 
     property "does nothing if the user has no login in the store" do
       check all username <- username() do
-        assert :ok = Expected.delete_all_user_logins(username)
+        assert Expected.delete_all_user_logins(username) == :ok
       end
     end
   end
@@ -136,15 +136,15 @@ defmodule ExpectedTest do
                   ) do
         clear_store_and_put_logins(recent_logins ++ old_logins)
 
-        assert :ok = Expected.clean_old_logins(max_age)
+        assert Expected.clean_old_logins(max_age) == :ok
 
         Enum.each(recent_logins, fn %{username: username, serial: serial} ->
           assert {:ok, %Login{}} = MemoryStore.get(username, serial, @server)
         end)
 
         Enum.each(old_logins, fn %{username: username, serial: serial} ->
-          assert {:error, :no_login} =
-                   MemoryStore.get(username, serial, @server)
+          assert MemoryStore.get(username, serial, @server) ==
+                   {:error, :no_login}
         end)
       end
     end
@@ -160,7 +160,7 @@ defmodule ExpectedTest do
                   ) do
         clear_store_and_put_logins(recent_logins ++ old_logins)
 
-        assert :ok = Expected.clean_old_logins(max_age)
+        assert Expected.clean_old_logins(max_age) == :ok
 
         Enum.each(recent_logins, fn %Login{username: username, sid: sid} ->
           assert SessionStore.get(nil, sid, @ets_table) ==

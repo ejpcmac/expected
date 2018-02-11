@@ -112,7 +112,7 @@ defmodule Expected.PlugsTest do
         |> register_login()
         |> send_resp(:ok, "")
 
-        assert [] = MemoryStore.list_user_logins(username, @server)
+        assert MemoryStore.list_user_logins(username, @server) == []
         assert [%Login{}] = MemoryStore.list_user_logins(env_username, @server)
       end
     end
@@ -138,8 +138,8 @@ defmodule Expected.PlugsTest do
         |> register_login(current_user: opt_field)
         |> send_resp(:ok, "")
 
-        assert [] = MemoryStore.list_user_logins(username, @server)
-        assert [] = MemoryStore.list_user_logins(env_username, @server)
+        assert MemoryStore.list_user_logins(username, @server) == []
+        assert MemoryStore.list_user_logins(env_username, @server) == []
         assert [%Login{}] = MemoryStore.list_user_logins(opt_username, @server)
       end
     end
@@ -161,7 +161,7 @@ defmodule Expected.PlugsTest do
         |> register_login()
         |> send_resp(:ok, "")
 
-        assert [] = MemoryStore.list_user_logins(username, @server)
+        assert MemoryStore.list_user_logins(username, @server) == []
 
         assert [%Login{username: ^env_username}] =
                  MemoryStore.list_user_logins(env_username, @server)
@@ -194,8 +194,8 @@ defmodule Expected.PlugsTest do
         |> register_login(username: opt_field)
         |> send_resp(:ok, "")
 
-        assert [] = MemoryStore.list_user_logins(username, @server)
-        assert [] = MemoryStore.list_user_logins(env_username, @server)
+        assert MemoryStore.list_user_logins(username, @server) == []
+        assert MemoryStore.list_user_logins(env_username, @server) == []
 
         assert [%Login{username: ^opt_username}] =
                  MemoryStore.list_user_logins(opt_username, @server)

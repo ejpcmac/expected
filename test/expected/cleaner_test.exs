@@ -48,8 +48,8 @@ defmodule Expected.CleanerTest do
         end)
 
         Enum.each(old_logins, fn %{username: username, serial: serial} ->
-          assert {:error, :no_login} =
-                   MemoryStore.get(username, serial, @server)
+          assert MemoryStore.get(username, serial, @server) ==
+                   {:error, :no_login}
         end)
       end
     end
@@ -105,8 +105,8 @@ defmodule Expected.CleanerTest do
         end)
 
         Enum.each(old_logins, fn %{username: username, serial: serial} ->
-          assert {:error, :no_login} =
-                   MemoryStore.get(username, serial, @server)
+          assert MemoryStore.get(username, serial, @server) ==
+                   {:error, :no_login}
         end)
       end
     end
@@ -137,8 +137,8 @@ defmodule Expected.CleanerTest do
         end)
 
         Enum.each(old_logins, fn %{username: username, serial: serial} ->
-          assert {:error, :no_login} =
-                   MemoryStore.get(username, serial, @server)
+          assert MemoryStore.get(username, serial, @server) ==
+                   {:error, :no_login}
         end)
       end
     end

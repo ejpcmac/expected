@@ -71,10 +71,10 @@ defmodule Expected.Case do
         end)
       end
 
-      defp setup_stores(_ \\ :ok) do
+      defp setup_stores(context \\ :ok) do
         :ets.new(@ets_table, [:named_table, :public])
         start_supervised!(MemoryStore)
-        :ok
+        context
       end
 
       defp clear_store_and_put_logins(logins) do
