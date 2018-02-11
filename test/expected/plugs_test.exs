@@ -10,6 +10,7 @@ defmodule Expected.PlugsTest do
   alias Plug.Session
   alias Plug.Session.ETS, as: SessionStore
 
+  @now System.os_time()
   @one_minute_ago @now - System.convert_time_unit(60, :seconds, :native)
 
   @session_opts [
@@ -203,7 +204,7 @@ defmodule Expected.PlugsTest do
 
     property "uses the auth_cookie max age set in the application environment",
              %{conn: conn} do
-      check all max_age <- integer(1..@three_months) do
+      check all max_age <- integer(1..@one_year) do
         Application.put_env(:expected, :cookie_max_age, max_age)
 
         conn =
@@ -220,8 +221,8 @@ defmodule Expected.PlugsTest do
     property "uses preferably the auth_cookie max age set in options", %{
       conn: conn
     } do
-      check all env_max_age <- integer(1..@three_months),
-                opt_max_age <- integer(1..@three_months),
+      check all env_max_age <- integer(1..@one_year),
+                opt_max_age <- integer(1..@one_year),
                 opt_max_age != env_max_age do
         Application.put_env(:expected, :cookie_max_age, env_max_age)
 
@@ -541,7 +542,7 @@ defmodule Expected.PlugsTest do
 
     property "uses the auth_cookie max age set in the application environment",
              %{conn: conn} do
-      check all max_age <- integer(1..@three_months),
+      check all max_age <- integer(1..@one_year),
                 login <- login() do
         clear_store_and_put_logins(login)
 
@@ -562,8 +563,8 @@ defmodule Expected.PlugsTest do
     property "uses preferably the auth_cookie max age set in options", %{
       conn: conn
     } do
-      check all env_max_age <- integer(1..@three_months),
-                opt_max_age <- integer(1..@three_months),
+      check all env_max_age <- integer(1..@one_year),
+                opt_max_age <- integer(1..@one_year),
                 opt_max_age != env_max_age,
                 login <- login() do
         clear_store_and_put_logins(login)

@@ -4,6 +4,8 @@ defmodule Expected.CleanerTest do
   alias Expected.Cleaner
   alias Expected.ConfigurationError
 
+  @three_months 7_776_000
+
   describe "start_link/1" do
     test "starts the GenServer" do
       assert {:ok, pid} = Cleaner.start_link()
@@ -54,10 +56,10 @@ defmodule Expected.CleanerTest do
 
     property "does not trigger login cleaning before cleaner period is over" do
       check all recent_logins <-
-                  uniq_list_of(login(max_age: @three_months), length: 5),
+                  uniq_list_of(login(max_age: @one_year), length: 5),
                 old_logins <-
                   uniq_list_of(
-                    login(min_age: @three_months),
+                    login(min_age: @one_year),
                     length: 5
                   ),
                 max_runs: 10 do
@@ -110,7 +112,7 @@ defmodule Expected.CleanerTest do
     end
 
     property "fetches the cookie_max_age from the application configuration" do
-      check all max_age <- integer(1..@three_months),
+      check all max_age <- integer(1..@one_year),
                 recent_logins <-
                   uniq_list_of(login(max_age: max_age), length: 5),
                 old_logins <-

@@ -126,7 +126,7 @@ defmodule ExpectedTest do
     setup [:setup_stores]
 
     property "deletes the logins older than max_age" do
-      check all max_age <- integer(1..@three_months),
+      check all max_age <- integer(1..@one_year),
                 recent_logins <-
                   uniq_list_of(login(max_age: max_age), length: 5),
                 old_logins <-
@@ -150,7 +150,7 @@ defmodule ExpectedTest do
     end
 
     property "cleans the sessions associated with the old logins" do
-      check all max_age <- integer(1..@three_months),
+      check all max_age <- integer(1..@one_year),
                 recent_logins <-
                   uniq_list_of(login(max_age: max_age), length: 5),
                 old_logins <-
