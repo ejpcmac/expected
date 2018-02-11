@@ -2,26 +2,39 @@ defmodule Expected.Store.Test do
   @moduledoc """
   A module for testing `Expected.Store` implementations.
 
-  In order to test a new `Expected.Store`, create a test module and use
-  `Expected.Store.Test` by specifying the store to test:
+  ## Usage
+
+  First, add [`stream_data`](https://github.com/whatyouhide/stream_data) to your
+  dependencies:
+
+      {:stream_data, "~> 0.4.0", only: :test}
+
+  It is needed because this module uses property-testing.
+
+  Then, create a test module for you store using `Expected.Store.Test` and
+  defining the `init_store/1` and `clear_store/1` helpers:
 
       defmodule MyExpected.StoreTest do
         use ExUnit.Case
         use Expected.Store.Test, store: MyExpected.Store
 
-        # Must be defined for Expected.Store.Test to work.
+        # Define an init_store/1 setup function.
         defp init_store(_) do
-          # Insert @login1 defined in Expected.Store.Test in your store.
-          # ...
+          # Initialise your store if needed.
 
           # Return a map containing your options as `opts`.
           %{opts: init(table: :expected)}
         end
 
+        # Define a clear_store/1 helper:
+        defp clear_store(opts), do: something_that_clears_your_store(opts)
+
         # Test your init function
         describe "init/1" do
-          test "returns the table name" do
-            assert init(table: :expected) == :expected
+          property "returns the table name" do
+            check all table <- atom(:alphanumeric) do
+              assert init(table: table) == table
+            end
           end
         end
       end
@@ -35,129 +48,230 @@ defmodule Expected.Store.Test do
   defmacro __using__(opts) do
     store = Keyword.fetch!(opts, :store)
 
+    # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
     quote do
+      use ExUnitProperties
+
       import unquote(store)
 
       alias Expected.Login
 
-      @now System.os_time()
-      @three_months 7_776_000
-      @four_months System.convert_time_unit(10_368_000, :seconds, :native)
-      @four_months_ago @now - @four_months
+      @one_year 31_536_000
 
-      @login1 %Login{
-        username: "user",
-        serial: "1",
-        token: "token",
-        sid: "sid",
-        created_at: @now,
-        last_login: @now,
-        last_ip: {127, 0, 0, 1},
-        last_useragent: "ExUnit"
-      }
+      # Username generator
+      defp username, do: string(:ascii, min_length: 3)
 
-      @login2 %{@login1 | serial: "2", token: "token2", sid: "sid2"}
-      @login3 %{@login1 | username: "user2", token: "token3", sid: "sid3"}
-      @old_login %{@login2 | last_login: @four_months_ago}
+      # Login generator
+      defp gen_login(opts \\ []) do
+        now = System.os_time()
 
-      @logins %{
-        "user" => %{
-          "1" => @login1
-        }
-      }
+        min_age =
+          opts
+          |> Keyword.get(:min_age, 0)
+          |> System.convert_time_unit(:seconds, :native)
+
+        max_age =
+          opts
+          |> Keyword.get(:max_age, now)
+          |> System.convert_time_unit(:seconds, :native)
+
+        gen all gen_username <- username(),
+                timestamp <- integer((now - max_age)..(now - min_age)),
+                ip <- {byte(), byte(), byte(), byte()},
+                useragent <- string(:ascii) do
+          username = opts[:username] || gen_username
+
+          login = %Login{
+            username: username,
+            serial: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
+            token: 48 |> :crypto.strong_rand_bytes() |> Base.encode64(),
+            sid: 96 |> :crypto.strong_rand_bytes() |> Base.encode64(),
+            created_at: timestamp,
+            last_login: timestamp,
+            last_ip: ip,
+            last_useragent: useragent
+          }
+
+          login
+        end
+      end
+
+      defp clear_store_and_put_logins(logins, opts) do
+        clear_store(opts)
+        put_logins(logins, opts)
+      end
+
+      defp put_logins(%Login{} = login, opts), do: put(login, opts)
+      defp put_logins(logins, opts), do: Enum.each(logins, &put(&1, opts))
 
       describe "list_user_logins/2" do
         setup [:init_store]
 
-        test "lists the logins present in the store for a user", %{
+        property "lists the logins present in the store for a user", %{
           opts: opts
         } do
-          assert list_user_logins("user", opts) == [@login1]
+          check all user <- username(),
+                    length <- integer(1..5),
+                    user_logins <-
+                      uniq_list_of(gen_login(username: user), length: length),
+                    other_logins <- uniq_list_of(gen_login(), length: 5) do
+            clear_store_and_put_logins(user_logins ++ other_logins, opts)
+
+            logins = list_user_logins(user, opts)
+
+            assert length(logins) == length
+
+            Enum.each(user_logins, fn login ->
+              assert login in logins
+            end)
+          end
         end
 
-        test "works as well when the user is not present in the store", %{
+        property "works as well when the user is not present in the store", %{
           opts: opts
         } do
-          assert list_user_logins("test", opts) == []
+          check all user <- username() do
+            assert list_user_logins(user, opts) == []
+          end
         end
       end
 
       describe "get/3" do
         setup [:init_store]
 
-        test "gets the login for the given username and serial", %{
+        property "gets the login for the given username and serial", %{
           opts: opts
         } do
-          assert {:ok, @login1} = get("user", "1", opts)
+          check all login <- gen_login() do
+            clear_store_and_put_logins(login, opts)
+            assert get(login.username, login.serial, opts) == {:ok, login}
+          end
         end
 
-        test "returns an error if there is no correspondant login", %{
+        property "returns an error if there is no correspondant login", %{
           opts: opts
         } do
-          assert {:error, :no_login} = get("user", "9", opts)
-          assert {:error, :no_login} = get("test", "1", opts)
+          check all login <- gen_login(),
+                    other_user <- username() do
+            clear_store_and_put_logins(login, opts)
+            bad_serial = 48 |> :crypto.strong_rand_bytes() |> Base.encode64()
+
+            assert get(login.username, bad_serial, opts) == {:error, :no_login}
+            assert get(other_user, bad_serial, opts) == {:error, :no_login}
+          end
         end
       end
 
       describe "put/2" do
         setup [:init_store]
 
-        test "creates a new entry if there is none for the given serial", %{
-          opts: opts
-        } do
-          assert :ok = put(@login2, opts)
-          user_logins = list_user_logins("user", opts)
+        property "creates a new entry if there is none for the given username",
+                 %{opts: opts} do
+          check all login <- gen_login() do
+            clear_store(opts)
 
-          assert @login1 in user_logins
-          assert @login2 in user_logins
+            assert list_user_logins(login.username, opts) == []
+            assert put(login, opts) == :ok
+            assert list_user_logins(login.username, opts) == [login]
+          end
         end
 
-        test "creates a new entry if there is none for the given username", %{
+        property "creates a new entry if there is none for the given serial", %{
           opts: opts
         } do
-          assert :ok = put(@login3, opts)
-          assert list_user_logins("user2", opts) == [@login3]
+          check all %{username: username} = login1 <- gen_login(),
+                    login2 <- gen_login(username: username) do
+            clear_store_and_put_logins(login1, opts)
+
+            assert list_user_logins(username, opts) == [login1]
+
+            assert put(login2, opts) == :ok
+
+            user_logins = list_user_logins(username, opts)
+            assert login1 in user_logins
+            assert login2 in user_logins
+          end
         end
 
-        test "replaces an existing entry if there is one already", %{
+        property "replaces an existing entry if there is one already", %{
           opts: opts
         } do
-          updated_login = %{@login1 | token: "new_token"}
+          check all login <- gen_login() do
+            clear_store_and_put_logins(login, opts)
+            new_token = 48 |> :crypto.strong_rand_bytes() |> Base.encode64()
+            updated_login = %{login | token: new_token}
 
-          assert :ok = put(updated_login, opts)
-          assert list_user_logins("user", opts) == [updated_login]
+            assert list_user_logins(login.username, opts) == [login]
+            assert put(updated_login, opts) == :ok
+            assert list_user_logins(login.username, opts) == [updated_login]
+          end
         end
       end
 
       describe "delete/3" do
         setup [:init_store]
 
-        test "deletes a login given its username and serial", %{opts: opts} do
-          assert :ok = delete("user", "1", opts)
-          assert list_user_logins("user", opts) == []
-        end
-
-        test "works as well if there is no corresponding login", %{
+        property "deletes a login given its username and serial", %{
           opts: opts
         } do
-          assert :ok = delete("test", "1", opts)
+          check all login <- gen_login() do
+            clear_store_and_put_logins(login, opts)
+
+            assert list_user_logins(login.username, opts) == [login]
+            assert delete(login.username, login.serial, opts) == :ok
+            assert list_user_logins(login.username, opts) == []
+          end
+        end
+
+        property "works as well if there is no corresponding login", %{
+          opts: opts
+        } do
+          check all login <- gen_login() do
+            clear_store_and_put_logins(login, opts)
+            assert delete(login.username, login.serial, opts) == :ok
+          end
         end
       end
 
       describe "clean_old_logins/2" do
         setup [:init_store]
 
-        test "deletes old logins from the store", %{opts: opts} do
-          :ok = put(@old_login, opts)
-          clean_old_logins(@three_months, opts)
+        property "deletes old logins from the store", %{opts: opts} do
+          check all max_age <- integer(1..@one_year),
+                    recent_logins <-
+                      uniq_list_of(gen_login(max_age: max_age), length: 5),
+                    old_logins <-
+                      uniq_list_of(gen_login(min_age: max_age), length: 5) do
+            clear_store_and_put_logins(recent_logins ++ old_logins, opts)
 
-          assert {:ok, @login1} = get("user", "1", opts)
-          assert {:error, :no_login} = get("user", "2", opts)
+            clean_old_logins(max_age, opts)
+
+            Enum.each(recent_logins, fn %{username: username, serial: serial} ->
+              assert {:ok, %Login{}} = get(username, serial, opts)
+            end)
+
+            Enum.each(old_logins, fn %{username: username, serial: serial} ->
+              assert get(username, serial, opts) == {:error, :no_login}
+            end)
+          end
         end
 
-        test "returns the list of deleted logins", %{opts: opts} do
-          :ok = put(@old_login, opts)
-          assert clean_old_logins(@three_months, opts) == [@old_login]
+        property "returns the list of deleted logins", %{opts: opts} do
+          check all max_age <- integer(1..@one_year),
+                    recent_logins <-
+                      uniq_list_of(gen_login(max_age: max_age), length: 5),
+                    old_logins <-
+                      uniq_list_of(gen_login(min_age: max_age), length: 5) do
+            clear_store_and_put_logins(recent_logins ++ old_logins, opts)
+
+            deleted_logins = clean_old_logins(max_age, opts)
+
+            assert length(deleted_logins) == 5
+
+            Enum.each(old_logins, fn login ->
+              assert login in deleted_logins
+            end)
+          end
         end
       end
     end

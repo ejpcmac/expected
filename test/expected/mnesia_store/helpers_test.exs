@@ -5,7 +5,7 @@ defmodule Expected.MnesiaStore.HelpersTest do
 
   describe "setup!/0" do
     test "creates a Mnesia schema and table according to the configuration" do
-      assert :ok = Helpers.setup!()
+      assert Helpers.setup!() == :ok
       assert {:aborted, {:already_exists, _}} = :mnesia.create_table(@table, [])
       assert :mnesia.table_info(@table, :type) == :bag
       assert (1 + login(:serial)) in :mnesia.table_info(@table, :index)
@@ -31,7 +31,7 @@ defmodule Expected.MnesiaStore.HelpersTest do
 
     test "does nothing if the table already exists" do
       :mnesia.create_table(@table, attributes: @attributes)
-      assert :ok = Helpers.setup!()
+      assert Helpers.setup!() == :ok
     end
   end
 
@@ -43,7 +43,7 @@ defmodule Expected.MnesiaStore.HelpersTest do
       :mnesia.dirty_write(record)
 
       assert :mnesia.dirty_match_object({@table, :_, :_}) == [record]
-      assert :ok = Helpers.clear!()
+      assert Helpers.clear!() == :ok
       assert :mnesia.dirty_match_object({@table, :_, :_}) == []
     end
 
@@ -60,8 +60,8 @@ defmodule Expected.MnesiaStore.HelpersTest do
     test "drops the given Mnesia table" do
       :mnesia.create_table(@table, attributes: @attributes)
 
-      assert :ok = Helpers.drop!()
-      assert {:aborted, {:no_exists, @table}} = :mnesia.delete_table(@table)
+      assert Helpers.drop!() == :ok
+      assert :mnesia.delete_table(@table) == {:aborted, {:no_exists, @table}}
     end
 
     test "raises if the table name is not provided in the configuration" do
@@ -75,7 +75,7 @@ defmodule Expected.MnesiaStore.HelpersTest do
 
   describe "setup/2" do
     test "creates a Mnesia schema and table and returns :ok if it’s all good" do
-      assert :ok = Helpers.setup(@table)
+      assert Helpers.setup(@table) == :ok
       assert {:aborted, {:already_exists, _}} = :mnesia.create_table(@table, [])
       assert :mnesia.table_info(@table, :attributes) == @attributes
     end
@@ -83,12 +83,12 @@ defmodule Expected.MnesiaStore.HelpersTest do
     test "can create a persistent table" do
       filename = Atom.to_string(@table) <> ".DCD"
 
-      assert :ok = Helpers.setup(@table, :persistent)
+      assert Helpers.setup(@table, :persistent) == :ok
       assert "Mnesia.nonode@nohost" |> Path.join(filename) |> File.exists?()
     end
 
     test "can create a volatile table" do
-      assert :ok = Helpers.setup(@table, :volatile)
+      assert Helpers.setup(@table, :volatile) == :ok
       refute "Mnesia.nonode@nohost" |> Path.join("test.DCD") |> File.exists?()
     end
 
@@ -96,7 +96,7 @@ defmodule Expected.MnesiaStore.HelpersTest do
       {:atomic, :ok} =
         :mnesia.change_table_copy_type(:schema, node(), :disc_copies)
 
-      assert :ok = Helpers.setup(@table)
+      assert Helpers.setup(@table) == :ok
     end
 
     test "returns an error if the schema cannot be written on disk" do
@@ -118,12 +118,12 @@ defmodule Expected.MnesiaStore.HelpersTest do
       :mnesia.dirty_write(record)
 
       assert :mnesia.dirty_match_object({@table, :_, :_}) == [record]
-      assert :ok = Helpers.clear(@table)
+      assert Helpers.clear(@table) == :ok
       assert :mnesia.dirty_match_object({@table, :_, :_}) == []
     end
 
     test "works as well if the table does not exist" do
-      assert :ok = Helpers.clear(@table)
+      assert Helpers.clear(@table) == :ok
     end
   end
 
@@ -131,12 +131,12 @@ defmodule Expected.MnesiaStore.HelpersTest do
     test "drops the given Mnesia table" do
       :mnesia.create_table(@table, attributes: @attributes)
 
-      assert :ok = Helpers.drop(@table)
-      assert {:aborted, {:no_exists, @table}} = :mnesia.delete_table(@table)
+      assert Helpers.drop(@table) == :ok
+      assert :mnesia.delete_table(@table) == {:aborted, {:no_exists, @table}}
     end
 
     test "works as well if the given table does not exist" do
-      assert :ok = Helpers.drop(@table)
+      assert Helpers.drop(@table) == :ok
     end
   end
 end

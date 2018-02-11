@@ -16,10 +16,6 @@ defmodule Expected.MemoryStore do
   You also must start the server:
 
       Expected.MemoryStore.start_link()
-
-  It is possible to initialise it with a defined state to help testing:
-
-      Expected.MemoryStore.start_link(%{})
   """
 
   @behaviour Expected.Store
@@ -29,12 +25,11 @@ defmodule Expected.MemoryStore do
   @doc """
   Starts the store server.
   """
-  @spec start_link() :: GenServer.on_start()
-  @spec start_link(term()) :: GenServer.on_start()
-  def start_link(default \\ %{}) do
+  @spec start_link :: GenServer.on_start()
+  def start_link do
     case Application.fetch_env(:expected, :process_name) do
       {:ok, name} ->
-        GenServer.start_link(__MODULE__.Server, default, name: name)
+        GenServer.start_link(__MODULE__.Server, :ok, name: name)
 
       :error ->
         raise ConfigurationError, reason: :no_process_name
@@ -72,5 +67,22 @@ defmodule Expected.MemoryStore do
   @impl true
   def clean_old_logins(max_age, server) do
     GenServer.call(server, {:clean_old_logins, max_age})
+  end
+
+  @doc """
+  Clears all logins from the memory store.
+  """
+  @spec clear(pid()) :: :ok
+  def clear(server) do
+    GenServer.call(server, :clear)
+  end
+
+  @doc false
+  @spec child_spec(term()) :: Supervisor.child_spec()
+  def child_spec(_opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, []}
+    }
   end
 end

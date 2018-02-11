@@ -8,8 +8,8 @@ defmodule Expected.MemoryStore.Server do
   alias Expected.Login
 
   @impl true
-  def init(state) do
-    {:ok, state}
+  def init(:ok) do
+    {:ok, %{}}
   end
 
   @impl true
@@ -66,6 +66,11 @@ defmodule Expected.MemoryStore.Server do
     {state, deleted_logins} = clean_old_logins(state, oldest_timestamp)
 
     {:reply, deleted_logins, state}
+  end
+
+  @impl true
+  def handle_call(:clear, _from, _state) do
+    {:reply, :ok, %{}}
   end
 
   @spec clean_old_logins(map(), integer()) :: {map(), [Login.t()]}

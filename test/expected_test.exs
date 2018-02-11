@@ -2,23 +2,10 @@ defmodule ExpectedTest do
   use Expected.Case
 
   alias Expected.ConfigurationError
-  alias Plug.Session.ETS, as: SessionStore
 
   #################
   # API functions #
   #################
-
-  defp with_login(_) do
-    setup_stores()
-
-    :ok = MemoryStore.put(@login, @server)
-    :ok = MemoryStore.put(@other_login, @server)
-
-    # Also put a valid session for @login.
-    SessionStore.put(nil, @sid, %{"a" => "b"}, @ets_table)
-
-    :ok
-  end
 
   describe "unexpected_token?/1" do
     test "returns true if there has been an authentication attempt with a bad
@@ -39,65 +26,151 @@ defmodule ExpectedTest do
   end
 
   describe "list_user_logins/1" do
-    setup [:with_login]
+    setup [:setup_stores]
 
-    test "lists logins for the given user" do
-      assert Expected.list_user_logins(@username) == [@login]
+    property "lists logins for the given user" do
+      check all user <- username(),
+                length <- integer(1..5),
+                user_logins <-
+                  uniq_list_of(login(username: user), length: length),
+                other_logins <- uniq_list_of(login(), length: 5) do
+        clear_store_and_put_logins(user_logins ++ other_logins)
+
+        logins = Expected.list_user_logins(user)
+
+        assert length(logins) == length
+
+        Enum.each(user_logins, fn login ->
+          assert login in logins
+        end)
+      end
     end
   end
 
   describe "delete_login/2" do
-    setup [:with_login]
+    setup [:setup_stores]
 
-    test "deletes a login if it exists" do
-      assert :ok = Expected.delete_login(@username, @serial)
-      assert {:error, :no_login} = MemoryStore.get(@username, @serial, @server)
+    property "deletes a login if it exists" do
+      check all %{username: username, serial: serial} = login <- login() do
+        clear_store_and_put_logins(login)
+
+        assert {:ok, %Login{}} = MemoryStore.get(username, serial, @server)
+        assert Expected.delete_login(username, serial) == :ok
+        assert MemoryStore.get(username, serial, @server) == {:error, :no_login}
+      end
     end
 
-    test "deletes the session associated with the login if it exists" do
-      assert :ok = Expected.delete_login(@username, @serial)
-      assert SessionStore.get(nil, "sid", @ets_table) == {nil, %{}}
+    property "deletes the session associated with the login if it exists" do
+      check all %{username: username, serial: serial, sid: sid} = login <-
+                  login() do
+        clear_store_and_put_logins(login)
+
+        assert SessionStore.get(nil, sid, @ets_table) ==
+                 {sid, %{username: username}}
+
+        assert Expected.delete_login(username, serial) == :ok
+        assert SessionStore.get(nil, sid, @ets_table) == {nil, %{}}
+      end
     end
 
-    test "does nothing if the login does not exist" do
-      assert :ok = Expected.delete_login("false_user", "bad_serial")
+    property "also works if the login does not exist" do
+      check all %{username: user, serial: serial} <- login() do
+        assert Expected.delete_login(user, serial) == :ok
+      end
     end
   end
 
   describe "delete_all_user_logins/1" do
-    setup [:with_login]
+    setup [:setup_stores]
 
-    test "deletes all user logins for the given username" do
-      assert :ok = Expected.delete_all_user_logins(@username)
-      assert MemoryStore.list_user_logins(@username, @server) == []
+    property "deletes all user logins for the given username" do
+      check all user <- username(),
+                user_logins <- uniq_list_of(login(username: user), length: 5),
+                other_logins <- uniq_list_of(login(), length: 5) do
+        clear_store_and_put_logins(user_logins ++ other_logins)
+
+        assert user |> MemoryStore.list_user_logins(@server) |> length() == 5
+        assert Expected.delete_all_user_logins(user) == :ok
+        assert MemoryStore.list_user_logins(user, @server) == []
+      end
     end
 
-    test "deletes the sessions associated with the logins if they exist" do
-      assert :ok = Expected.delete_all_user_logins(@username)
-      assert SessionStore.get(nil, "sid", @ets_table) == {nil, %{}}
+    property "deletes the sessions associated with the logins if they exist" do
+      check all username <- username(),
+                user_logins <-
+                  uniq_list_of(login(username: username), length: 5),
+                other_logins <- uniq_list_of(login(), length: 5) do
+        clear_store_and_put_logins(user_logins ++ other_logins)
+
+        Enum.each(user_logins, fn %Login{sid: sid} ->
+          assert SessionStore.get(nil, sid, @ets_table) ==
+                   {sid, %{username: username}}
+        end)
+
+        assert Expected.delete_all_user_logins(username) == :ok
+
+        Enum.each(user_logins, fn %Login{sid: sid} ->
+          assert SessionStore.get(nil, sid, @ets_table) == {nil, %{}}
+        end)
+      end
     end
 
-    test "does nothing if the user has no login in the store" do
-      assert :ok = Expected.delete_all_user_logins("false_user")
+    property "does nothing if the user has no login in the store" do
+      check all username <- username() do
+        assert Expected.delete_all_user_logins(username) == :ok
+      end
     end
   end
 
   describe "clean_old_logins/1" do
-    setup [:with_login]
+    setup [:setup_stores]
 
-    test "deletes the logins older than max_age" do
-      :ok = MemoryStore.put(@old_login, @server)
+    property "deletes the logins older than max_age" do
+      check all max_age <- integer(1..@one_year),
+                recent_logins <-
+                  uniq_list_of(login(max_age: max_age), length: 5),
+                old_logins <-
+                  uniq_list_of(
+                    login(min_age: max_age),
+                    length: 5
+                  ) do
+        clear_store_and_put_logins(recent_logins ++ old_logins)
 
-      assert :ok = Expected.clean_old_logins(@three_months)
-      assert MemoryStore.list_user_logins(@username, @server) == [@login]
+        assert Expected.clean_old_logins(max_age) == :ok
+
+        Enum.each(recent_logins, fn %{username: username, serial: serial} ->
+          assert {:ok, %Login{}} = MemoryStore.get(username, serial, @server)
+        end)
+
+        Enum.each(old_logins, fn %{username: username, serial: serial} ->
+          assert MemoryStore.get(username, serial, @server) ==
+                   {:error, :no_login}
+        end)
+      end
     end
 
-    test "cleans the sessions associated with the old logins" do
-      SessionStore.put(nil, "sid2", %{"a" => "b"}, @ets_table)
-      :ok = MemoryStore.put(@old_login, @server)
+    property "cleans the sessions associated with the old logins" do
+      check all max_age <- integer(1..@one_year),
+                recent_logins <-
+                  uniq_list_of(login(max_age: max_age), length: 5),
+                old_logins <-
+                  uniq_list_of(
+                    login(min_age: max_age),
+                    length: 5
+                  ) do
+        clear_store_and_put_logins(recent_logins ++ old_logins)
 
-      assert :ok = Expected.clean_old_logins(@three_months)
-      assert SessionStore.get(nil, "sid2", @ets_table) == {nil, %{}}
+        assert Expected.clean_old_logins(max_age) == :ok
+
+        Enum.each(recent_logins, fn %Login{username: username, sid: sid} ->
+          assert SessionStore.get(nil, sid, @ets_table) ==
+                   {sid, %{username: username}}
+        end)
+
+        Enum.each(old_logins, fn %Login{sid: sid} ->
+          assert SessionStore.get(nil, sid, @ets_table) == {nil, %{}}
+        end)
+      end
     end
   end
 

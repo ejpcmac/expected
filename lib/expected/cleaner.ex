@@ -3,7 +3,9 @@ defmodule Expected.Cleaner do
   A module to automate old logins cleaning.
   """
 
-  use GenServer
+  use GenServer, start: {__MODULE__, :start_link, []}
+
+  alias Expected.ConfigurationError
 
   @cookie_max_age 7_776_000
 
@@ -11,11 +13,18 @@ defmodule Expected.Cleaner do
   Starts the login cleaner.
   """
   @spec start_link :: GenServer.on_start()
-  @spec start_link(term()) :: GenServer.on_start()
-  def start_link(_args \\ nil) do
-    timeout = Application.get_env(:expected, :cleaner_period, 86_400)
+  def start_link do
     max_age = Application.get_env(:expected, :cookie_max_age, @cookie_max_age)
-    GenServer.start_link(__MODULE__, {timeout * 1000, max_age})
+    GenServer.start_link(__MODULE__, {timeout(), max_age})
+  end
+
+  @spec timeout :: timeout()
+  defp timeout do
+    case Application.get_env(:expected, :cleaner_period, 86_400) do
+      :test -> 1
+      timeout when timeout > 0 -> timeout * 1000
+      _ -> raise ConfigurationError, reason: :bad_cleaner_timeout
+    end
   end
 
   @impl true
@@ -31,7 +40,7 @@ defmodule Expected.Cleaner do
     {:noreply, args}
   end
 
-  @spec schedule_work(non_neg_integer()) :: reference()
+  @spec schedule_work(timeout()) :: reference()
   defp schedule_work(timeout) do
     Process.send_after(self(), :work, timeout)
   end

@@ -90,6 +90,14 @@ defmodule Expected.ConfigurationError do
           session_cookie: "_my_app_key"  # Set your session cookie here.
     """
   end
+
+  def message(%{reason: :bad_cleaner_timeout}) do
+    """
+    Bad cleaner timeout.
+
+    The cleaner timeout must be a positive integer.
+    """
+  end
 end
 
 defmodule Expected.PlugError do

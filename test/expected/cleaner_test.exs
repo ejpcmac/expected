@@ -2,120 +2,145 @@ defmodule Expected.CleanerTest do
   use Expected.Case
 
   alias Expected.Cleaner
+  alias Expected.ConfigurationError
 
-  defp with_logins(_) do
-    setup_stores()
-
-    :ok = MemoryStore.put(@login, @server)
-    :ok = MemoryStore.put(@old_login, @server)
-  end
+  @three_months 7_776_000
 
   describe "start_link/1" do
     test "starts the GenServer" do
-      assert {:ok, _} = Cleaner.start_link()
+      assert {:ok, pid} = Cleaner.start_link()
+      assert is_pid(pid)
+      assert Process.alive?(pid)
+    end
+
+    test "raises an exception if the timeout is invalid" do
+      Application.put_env(:expected, :cleaner_period, 0)
+
+      assert_raise ConfigurationError,
+                   ConfigurationError.message(%{reason: :bad_cleaner_timeout}),
+                   fn -> Cleaner.start_link() end
     end
   end
 
   describe "the cleaner GenServer" do
-    setup [:with_logins]
+    setup [:setup_stores]
 
-    test "triggers login cleaning after timeout" do
-      Application.put_env(:expected, :cleaner_period, 1)
+    property "triggers login cleaning after timeout" do
+      check all recent_logins <-
+                  uniq_list_of(login(max_age: @three_months), length: 5),
+                old_logins <-
+                  uniq_list_of(
+                    login(min_age: @three_months),
+                    length: 5
+                  ),
+                max_runs: 1 do
+        clear_store_and_put_logins(recent_logins ++ old_logins)
 
-      assert {:ok, _} = Cleaner.start_link()
+        Application.put_env(:expected, :cleaner_period, 1)
+        assert {:ok, _} = start_supervised(Cleaner)
 
-      # Wait for the cleaning to trigger.
-      Process.sleep(1100)
+        # Wait for the cleaning to trigger.
+        Process.sleep(1100)
+        stop_supervised(Cleaner)
 
-      assert MemoryStore.list_user_logins(@username, @server) == [@login]
+        Enum.each(recent_logins, fn %{username: username, serial: serial} ->
+          assert {:ok, %Login{}} = MemoryStore.get(username, serial, @server)
+        end)
+
+        Enum.each(old_logins, fn %{username: username, serial: serial} ->
+          assert MemoryStore.get(username, serial, @server) ==
+                   {:error, :no_login}
+        end)
+      end
     end
 
-    test "does not trigger login cleaning before timeout" do
-      Application.put_env(:expected, :cleaner_period, 1)
+    property "does not trigger login cleaning before cleaner period is over" do
+      check all recent_logins <-
+                  uniq_list_of(login(max_age: @one_year), length: 5),
+                old_logins <-
+                  uniq_list_of(
+                    login(min_age: @one_year),
+                    length: 5
+                  ),
+                max_runs: 10 do
+        clear_store_and_put_logins(recent_logins ++ old_logins)
 
-      assert {:ok, _} = Cleaner.start_link()
+        Application.put_env(:expected, :cleaner_period, 1)
+        assert {:ok, _} = start_supervised(Cleaner)
 
-      # Wait a millisecond to let the cleaner start.
-      Process.sleep(1)
+        # Wait a millisecond to let the cleaner start.
+        Process.sleep(1)
+        stop_supervised(Cleaner)
 
-      assert MemoryStore.list_user_logins(@username, @server) == [
-               @login,
-               @old_login
-             ]
+        Enum.each(recent_logins ++ old_logins, fn %{
+                                                    username: username,
+                                                    serial: serial
+                                                  } ->
+          assert {:ok, %Login{}} = MemoryStore.get(username, serial, @server)
+        end)
+      end
     end
 
-    test "use three months as the default cookie_max_age" do
-      less_than_three_months_ago =
-        @now - System.convert_time_unit(@three_months - 60, :seconds, :native)
+    property "use three months as the default cookie_max_age" do
+      check all recent_logins <-
+                  uniq_list_of(login(max_age: @three_months), length: 5),
+                old_logins <-
+                  uniq_list_of(
+                    login(min_age: @three_months),
+                    length: 5
+                  ),
+                max_runs: 10 do
+        clear_store_and_put_logins(recent_logins ++ old_logins)
 
-      more_than_three_months_ago =
-        @now - System.convert_time_unit(@three_months + 60, :seconds, :native)
+        # Set the cleaner timeout to 1ms (test mode).
+        Application.put_env(:expected, :cleaner_period, :test)
+        assert {:ok, _} = start_supervised(Cleaner)
 
-      login_not_to_delete = %{
-        @login
-        | username: "cleaner_test_user",
-          serial: "serial2",
-          last_login: less_than_three_months_ago
-      }
+        # Wait a bit to let the cleaner do its work.
+        Process.sleep(2)
+        stop_supervised(Cleaner)
 
-      login_to_delete = %{
-        @login
-        | username: "cleaner_test_user",
-          serial: "serial3",
-          last_login: more_than_three_months_ago
-      }
+        Enum.each(recent_logins, fn %{username: username, serial: serial} ->
+          assert {:ok, %Login{}} = MemoryStore.get(username, serial, @server)
+        end)
 
-      :ok = MemoryStore.put(login_not_to_delete, @server)
-      :ok = MemoryStore.put(login_to_delete, @server)
-
-      # Start the cleaner immediately.
-      Application.put_env(:expected, :cleaner_period, 0)
-      assert {:ok, _} = Cleaner.start_link()
-
-      # Wait a millisecond to let the cleaner start.
-      Process.sleep(1)
-
-      assert MemoryStore.list_user_logins("cleaner_test_user", @server) == [
-               login_not_to_delete
-             ]
+        Enum.each(old_logins, fn %{username: username, serial: serial} ->
+          assert MemoryStore.get(username, serial, @server) ==
+                   {:error, :no_login}
+        end)
+      end
     end
 
-    test "fetches the cookie_max_age from the application configuration" do
-      Application.put_env(:expected, :cookie_max_age, 86_400)
+    property "fetches the cookie_max_age from the application configuration" do
+      check all max_age <- integer(1..@one_year),
+                recent_logins <-
+                  uniq_list_of(login(max_age: max_age), length: 5),
+                old_logins <-
+                  uniq_list_of(
+                    login(min_age: max_age),
+                    length: 5
+                  ),
+                max_runs: 10 do
+        clear_store_and_put_logins(recent_logins ++ old_logins)
 
-      less_than_a_day_ago =
-        @now - System.convert_time_unit(86_400 - 60, :seconds, :native)
+        # Set the cleaner timeout to 1ms (test mode).
+        Application.put_env(:expected, :cleaner_period, :test)
+        Application.put_env(:expected, :cookie_max_age, max_age)
+        assert {:ok, _} = start_supervised(Cleaner)
 
-      more_than_a_day_ago =
-        @now - System.convert_time_unit(86_400 + 60, :seconds, :native)
+        # Wait a bit to let the cleaner do its work.
+        Process.sleep(2)
+        stop_supervised(Cleaner)
 
-      login_not_to_delete = %{
-        @login
-        | username: "cleaner_test_user",
-          serial: "serial2",
-          last_login: less_than_a_day_ago
-      }
+        Enum.each(recent_logins, fn %{username: username, serial: serial} ->
+          assert {:ok, %Login{}} = MemoryStore.get(username, serial, @server)
+        end)
 
-      login_to_delete = %{
-        @login
-        | username: "cleaner_test_user",
-          serial: "serial3",
-          last_login: more_than_a_day_ago
-      }
-
-      :ok = MemoryStore.put(login_not_to_delete, @server)
-      :ok = MemoryStore.put(login_to_delete, @server)
-
-      # Start the cleaner immediately.
-      Application.put_env(:expected, :cleaner_period, 0)
-      assert {:ok, _} = Cleaner.start_link()
-
-      # Wait a millisecond to let the cleaner start.
-      Process.sleep(1)
-
-      assert MemoryStore.list_user_logins("cleaner_test_user", @server) == [
-               login_not_to_delete
-             ]
+        Enum.each(old_logins, fn %{username: username, serial: serial} ->
+          assert MemoryStore.get(username, serial, @server) ==
+                   {:error, :no_login}
+        end)
+      end
     end
   end
 end
