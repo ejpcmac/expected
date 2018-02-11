@@ -8,8 +8,8 @@ defmodule Expected.MemoryStore.Server do
   alias Expected.Login
 
   @impl true
-  def init(state) do
-    {:ok, state}
+  def init(:ok) do
+    {:ok, %{}}
   end
 
   @impl true

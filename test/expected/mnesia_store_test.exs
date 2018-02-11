@@ -7,19 +7,17 @@ defmodule Expected.MnesiaStoreTest do
   # Must be defined for Expected.Store.Test to work.
   defp init_store(_) do
     create_table()
-    :mnesia.dirty_write(@table, from_struct(@login1))
-
     %{opts: init(table: @table)}
   end
 
-  defp bad_table(_) do
-    :mnesia.create_table(@table, attributes: [:username, :logins, :other])
-    :ok
-  end
+  # Must be defined for Expected.Store.Test to work.
+  defp clear_store(table), do: :mnesia.clear_table(table)
 
   describe "init/1" do
-    test "returns the table name fetched from options" do
-      assert init(table: @table) == @table
+    property "returns the table name fetched from options" do
+      check all table <- atom(:alphanumeric) do
+        assert init(table: table) == table
+      end
     end
 
     test "raises an exception if there is no table in the options" do
@@ -30,38 +28,54 @@ defmodule Expected.MnesiaStoreTest do
   end
 
   describe "if the Mnesia table does not exist, an exception is raised" do
-    test "by list_user_logins/2" do
-      assert_raise MnesiaStoreError,
-                   MnesiaStoreError.message(%{reason: :table_not_exists}),
-                   fn -> list_user_logins("user", :a_table) end
+    property "by list_user_logins/2" do
+      check all username <- username(),
+                table <- atom(:alphanumeric) do
+        assert_raise MnesiaStoreError,
+                     MnesiaStoreError.message(%{reason: :table_not_exists}),
+                     fn -> list_user_logins(username, table) end
+      end
     end
 
     test "by get/3" do
-      assert_raise MnesiaStoreError,
-                   MnesiaStoreError.message(%{reason: :table_not_exists}),
-                   fn -> get("user", "serial", :a_table) end
+      check all %{username: username, serial: serial} <- gen_login(),
+                table <- atom(:alphanumeric) do
+        assert_raise MnesiaStoreError,
+                     MnesiaStoreError.message(%{reason: :table_not_exists}),
+                     fn -> get(username, serial, table) end
+      end
     end
 
     test "by put/2" do
-      assert_raise MnesiaStoreError,
-                   MnesiaStoreError.message(%{reason: :table_not_exists}),
-                   fn -> put(@login1, :a_table) end
+      check all login <- gen_login(),
+                table <- atom(:alphanumeric) do
+        assert_raise MnesiaStoreError,
+                     MnesiaStoreError.message(%{reason: :table_not_exists}),
+                     fn -> put(login, table) end
+      end
     end
 
     test "by delete/3" do
-      assert_raise MnesiaStoreError,
-                   MnesiaStoreError.message(%{reason: :table_not_exists}),
-                   fn -> delete("user", "serial", :a_table) end
+      check all %{username: username, serial: serial} <- gen_login(),
+                table <- atom(:alphanumeric) do
+        assert_raise MnesiaStoreError,
+                     MnesiaStoreError.message(%{reason: :table_not_exists}),
+                     fn -> delete(username, serial, table) end
+      end
     end
   end
 
   describe "if the Mnesia table has a bad format, an exception is raised" do
-    setup [:bad_table]
+    property "by put/2" do
+      check all login <- gen_login(),
+                table <- atom(:alphanumeric),
+                attributes <- uniq_list_of(atom(:alphanumeric), length: 3) do
+        :mnesia.create_table(table, attributes: attributes)
 
-    test "by put/2" do
-      assert_raise MnesiaStoreError,
-                   MnesiaStoreError.message(%{reason: :invalid_table_format}),
-                   fn -> put(@login1, @table) end
+        assert_raise MnesiaStoreError,
+                     MnesiaStoreError.message(%{reason: :invalid_table_format}),
+                     fn -> put(login, table) end
+      end
     end
   end
 end
