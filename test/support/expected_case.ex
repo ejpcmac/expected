@@ -74,14 +74,12 @@ defmodule Expected.Case do
       defp login(opts \\ []) do
         now = System.os_time()
 
-        min_age =
-          opts
-          |> Keyword.get(:min_age, 0)
-          |> System.convert_time_unit(:seconds, :native)
+        min_age_s = Keyword.get(opts, :min_age, 0)
+        min_age = System.convert_time_unit(min_age_s, :seconds, :native)
 
         max_age =
           opts
-          |> Keyword.get(:max_age, now)
+          |> Keyword.get(:max_age, min_age_s * 2)
           |> System.convert_time_unit(:seconds, :native)
 
         gen all gen_username <- username(),
