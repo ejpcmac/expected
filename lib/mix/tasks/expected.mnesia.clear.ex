@@ -20,6 +20,8 @@ defmodule Mix.Tasks.Expected.Mnesia.Clear do
   alias Expected.MnesiaStore.Helpers
   alias Expected.ConfigurationError
 
+  @dialyzer :no_undefined_callbacks
+
   @spec run(OptionParser.argv()) :: boolean()
   def run(_argv) do
     Helpers.clear!()

@@ -41,6 +41,8 @@ defmodule Mix.Tasks.Expected.Mnesia.Setup do
   alias Expected.ConfigurationError
   alias Expected.MnesiaTableExistsError
 
+  @dialyzer :no_undefined_callbacks
+
   @spec run(OptionParser.argv()) :: boolean()
   def run(_argv) do
     Helpers.setup!()

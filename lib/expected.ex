@@ -360,8 +360,8 @@ defmodule Expected do
 
     config_module =
       quote do
-        # credo:disable-for-next-line Credo.Check.Readability.ModuleDoc
         defmodule Expected.Config do
+          @moduledoc false
           def get, do: unquote(Macro.escape(expected))
         end
       end
